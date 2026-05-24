@@ -1,15 +1,15 @@
 import warnings
 import os
 import re
-
-# Suppress FaceNet/PyTorch warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
-# Optional: suppress some TensorFlow/standard logs if they get noisy
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import os
+import cv2
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-from transformers import AutoImageProcessor, AutoModelForImageClassification
+import joblib
+from skimage.measure import shannon_entropy
+from scipy.stats import kurtosis
+from sklearn.preprocessing import StandardScaler
 from PIL import Image, ImageOps
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
@@ -23,6 +23,11 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from collections import defaultdict
 import time
+
+# Core components for the Fusion Engine
+from core.alignment import GeometricAligner
+from core.diffusion_latent import DiffusionErrorLoop
+from core.statistical_extraction import StatisticalFeatureExtractor
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'deepfake-detection-super-secret-key-2026'
@@ -75,78 +80,160 @@ with app.app_context():
     except Exception as e:
         print(f"Skipping database creation (likely handled by another worker): {e}")
 
-# --- PyTorch Model Setup ---
+# --- PyTorch & Model Setup ---
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Loading Hugging Face Hub Deepfake model onto:", device)
+print("Initializing Aegis-AI forensic extraction pipelines on device:", device)
 
-mtcnn = MTCNN(keep_all=False, device=device)
+# Initialize Fusion Engine core components globally for speed
+fusion_model = None
+fusion_scaler = None
+aligner = None
+error_loop = None
+stat_extractor = None
 
-# Switch to production-grade generalized Vision Transformer from HF Hub
-model_id = "prithivMLmods/Deep-Fake-Detector-v2-Model"
 try:
-    processor = AutoImageProcessor.from_pretrained(model_id)
-    model = AutoModelForImageClassification.from_pretrained(model_id).to(device)
-    model.eval()
-    print(f"[{model_id}] perfectly synchronized and successfully loaded globally out of the box.")
+    model_path = os.path.join('dataset', 'fusion_engine_best.pkl')
+    scaler_path = os.path.join('dataset', 'scaler.pkl')
+    if os.path.exists(model_path) and os.path.exists(scaler_path):
+        fusion_model = joblib.load(model_path)
+        fusion_scaler = joblib.load(scaler_path)
+        print("🗄️  XGBoost Fusion Model and Scaler loaded successfully.")
+    else:
+        print("⚠️  Warning: Model/Scaler pkl files not found. Please train first.")
+        
+    aligner = GeometricAligner(device=device)
+    error_loop = DiffusionErrorLoop(device=device)
+    stat_extractor = StatisticalFeatureExtractor()
+    print("🧬  Sub-network extractors successfully mounted on GPU/CPU.")
 except Exception as e:
-    print(f"WARNING: Transformer model failed to boot from Hugging Face Hub (Internet issue?): {e}")
+    print(f"❌  ERROR during pipeline initialization: {e}")
+
+# ----- Forensic Helper Functions -----
+def high_freq_energy(freq_tensor: torch.Tensor) -> float:
+    freq = freq_tensor.squeeze().cpu()
+    h, w = freq.shape
+    mask = torch.zeros_like(freq, dtype=torch.bool)
+    margin_h = h // 4
+    margin_w = w // 4
+    mask[:margin_h, :] = True
+    mask[-margin_h:, :] = True
+    mask[:, :margin_w] = True
+    mask[:, -margin_w:] = True
+    return float(torch.sum(torch.abs(freq)[mask]))
+
+def compute_entropy(img_rgb):
+    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    return float(shannon_entropy(gray))
+
+def compute_edge_density(img_rgb):
+    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    edges = cv2.Canny(gray, 100, 200)
+    return float(np.sum(edges > 0) / edges.size)
+
+def compute_laplacian_variance(img_rgb):
+    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+    lap = cv2.Laplacian(gray, cv2.CV_64F)
+    return float(lap.var())
+
+def compute_color_kurtosis(img_rgb):
+    ks = [kurtosis(img_rgb[..., c].ravel()) for c in range(3)]
+    return float(np.mean(ks))
+
+def compute_jpeg_consistency(img_rgb):
+    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    dct_full = cv2.dct(gray)
+    mask = np.ones_like(dct_full, dtype=bool)
+    mask[:8, :8] = False
+    return float(np.var(dct_full[mask]))
 
 def predict_image(image_path):
+    if fusion_model is None or fusion_scaler is None:
+        return {"success": False, "error": "XGBoost Fusion Engine not initialized. Re-train the model first."}
+        
     try:
-        # CRITICAL FIX 1: Read EXIF orientation natively! Phone cameras write pixels sideways.
-        image = Image.open(image_path)
-        image = ImageOps.exif_transpose(image).convert("RGB")
+        bgr = cv2.imread(image_path)
+        if bgr is None:
+            return {"success": False, "error": f"Could not read image: {image_path}"}
+            
+        # 1. Align & Crop Face
+        aligned = aligner.align_and_crop(bgr, return_tensor=True)
+        if aligned is None:
+            return {"success": False, "error": "Face detection failed - no face found in the image."}
+            
+        # Save the aligned cropped face to disk to serve it to the frontend
+        filename = os.path.basename(image_path)
+        aligned_filename = "aligned_" + filename
+        aligned_filepath = os.path.join(os.path.dirname(image_path), aligned_filename)
         
-        # CRITICAL FIX 2: Isolate the human face. The ViT hallucinated on complex phone backgrounds (rooms, outdoors).
-        inference_image = image
-        try:
-            boxes, probs = mtcnn.detect(image)
-            if boxes is not None and len(boxes) > 0:
-                box = boxes[0]  # Take highest prob face
-                
-                # Expand box exactly by 15% to grab jawline and hairline (deepfake seams)
-                w, h = box[2] - box[0], box[3] - box[1]
-                b1, b2 = max(0, box[0] - w * 0.15), max(0, box[1] - h * 0.15)
-                b3, b4 = min(image.width, box[2] + w * 0.15), min(image.height, box[3] + h * 0.15)
-                
-                inference_image = image.crop((int(b1), int(b2), int(b3), int(b4)))
-        except Exception:
-            pass # Safely back off to the raw image if no logical face is found
+        # Crop is RGB, convert to BGR for OpenCV save
+        aligned_np = (aligned.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+        aligned_bgr = cv2.cvtColor(aligned_np, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(aligned_filepath, aligned_bgr)
+            
+        # 2. Extract features
+        spatial_score = float(torch.mean(torch.abs(aligned)).item())
         
-        inputs = processor(images=inference_image, return_tensors="pt").to(device)
-
-        with torch.no_grad():
-            outputs = model(**inputs)
-            logits = outputs.logits
-            model_probs = torch.nn.functional.softmax(logits, dim=1)
-
-        labels = model.config.id2label
-        fake_prob = 0.0
-        real_prob = 0.0
+        # Frequency score (exactly matching data_pipeline.py on the normalized aligned tensor)
+        gray_tensor = 0.2989 * aligned[0:1, :, :] + 0.5870 * aligned[1:2, :, :] + 0.1140 * aligned[2:3, :, :]
+        gray_tensor = gray_tensor.unsqueeze(0)  # Shape: [1, 1, 512, 512]
+        freq_complex = torch.fft.fft2(gray_tensor)
+        freq_shifted = torch.fft.fftshift(torch.abs(freq_complex), dim=(-2, -1))
+        freq_tensor = torch.log(1 + freq_shifted)
+        freq_score = high_freq_energy(freq_tensor)
         
-        # Smart dictionary parsing depending on model registry configuration
-        for idx, label_name in labels.items():
-            prob = model_probs[0][idx].item()
-            l = label_name.lower()
-            if 'fake' in l or 'deepfake' in l or 'spoof' in l:
-                fake_prob += prob
-            elif 'real' in l or 'pristine' in l:
-                real_prob += prob
-
-        # Fallback if label resolution gets highly ambiguous
-        if fake_prob == 0 and real_prob == 0:
-            pred_idx = torch.argmax(model_probs, dim=1).item()
-            predicted_label = labels[pred_idx].upper()
-            if 'FAKE' in predicted_label:
-                fake_prob = 1.0
-            else:
-                real_prob = 1.0
+        # Latent score
+        latent_err = error_loop(aligned.unsqueeze(0))
+        latent_score = float(torch.mean(torch.abs(latent_err)).item())
+        
+        # Statistical score
+        stat_tensor = stat_extractor(aligned.unsqueeze(0)).cpu()
+        stat_score = float(torch.mean(stat_tensor).item())
+        
+        # Conversions and statistics
+        entropy_score = compute_entropy(aligned_np)
+        edge_density_score = compute_edge_density(aligned_np)
+        laplacian_var_score = compute_laplacian_variance(aligned_np)
+        color_kurtosis_score = compute_color_kurtosis(aligned_np)
+        jpeg_consistency_score = compute_jpeg_consistency(aligned_np)
+        
+        # 3. Assemble features
+        feature_dict = {
+            "spatial_score": spatial_score,
+            "freq_score": freq_score,
+            "latent_score": latent_score,
+            "stat_score": stat_score,
+            "entropy": entropy_score,
+            "edge_density": edge_density_score,
+            "laplacian_variance": laplacian_var_score,
+            "color_kurtosis": color_kurtosis_score,
+            "jpeg_consistency": jpeg_consistency_score,
+        }
+        df_feat = pd.DataFrame([feature_dict])
+        df_scaled = fusion_scaler.transform(df_feat)
+        
+        # 4. Predict
+        prob_fake = float(fusion_model.predict_proba(df_scaled)[0, 1])
+        prediction = "FAKE" if prob_fake >= 0.5 else "REAL"
+        confidence = prob_fake * 100 if prob_fake >= 0.5 else (1 - prob_fake) * 100
         
         return {
             "success": True,
-            "fake_prob": round(fake_prob * 100, 2),
-            "real_prob": round(real_prob * 100, 2),
-            "prediction": "REAL" if real_prob > fake_prob else "FAKE"
+            "prediction": prediction,
+            "fake_prob": round(prob_fake * 100, 2),
+            "real_prob": round((1 - prob_fake) * 100, 2),
+            "confidence": round(confidence, 2),
+            "aligned_filename": aligned_filename,
+            "features": {
+                "spatial_score": round(spatial_score, 4),
+                "freq_score": round(freq_score, 2),
+                "latent_score": round(latent_score, 4),
+                "stat_score": round(stat_score, 4),
+                "entropy": round(entropy_score, 4),
+                "edge_density": round(edge_density_score, 4),
+                "laplacian_variance": round(laplacian_var_score, 2),
+                "color_kurtosis": round(color_kurtosis_score, 4),
+                "jpeg_consistency": round(jpeg_consistency_score, 2)
+            }
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -378,6 +465,8 @@ def api_predict():
         if result["success"]:
             # Expose public visual path
             result["image_url"] = f"/static/uploads/{filename}"
+            if "aligned_filename" in result:
+                result["aligned_url"] = f"/static/uploads/{result['aligned_filename']}"
             return jsonify(result)
         else:
             return jsonify({"success": False, "message": result.get("error")}), 500

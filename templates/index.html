@@ -1,93 +1,1329 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-    <script type="module" crossorigin src="/static/dashboard/assets/index-BLX_pbJM.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/dashboard/assets/index-AEk0NSXa.css">
-  </head>
-  <body>
-    <div id="root"></div>
-    <!-- Inject Floating Admin Button for adityajadhav300405@gmail.com -->
-    {% if user and user.email and user.email.strip().lower() == 'adityajadhav300405@gmail.com' %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS-AI | Forensic Core</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-      .admin-float-btn {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, #0d0d0d, #1a1a1a);
-        color: #e0e0e0;
-        border: 1px solid #333;
-        padding: 12px 20px;
-        border-radius: 8px;
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        text-decoration: none;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.1);
-        z-index: 9999;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .admin-float-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.9), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-        border-color: #555;
-        color: #fff;
-      }
-      .admin-float-btn svg {
-        width: 18px;
-        height: 18px;
-        fill: currentColor;
-      }
-    </style>
-    <a href="/aegis-override-system" class="admin-float-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.12v4.7c0 4.67-2.92 8.97-7 10.1-4.08-1.13-7-5.43-7-10.1V6.3l7-3.12zm0 2.82c-1.66 0-3 1.34-3 3 0 1.2.72 2.22 1.75 2.72L10.5 16h3l-.25-4.28c1.03-.5 1.75-1.52 1.75-2.72 0-1.66-1.34-3-3-3z"/></svg>
-      Admin Portal
-    </a>
-    {% endif %}
-
-    <!-- Sync React App's Option-in LocalStorage with Backend Database -->
-    <script>
-      (function() {
-        function syncOptInToBackend(optInValue) {
-          fetch('/api/update_optin', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ ai_data_optin: optInValue })
-          }).catch(err => console.error("Sync failed", err));
+        :root {
+            --bg-dark: #030303;
+            --bg-panel: #0a0a0a;
+            --bg-glass: rgba(13, 13, 13, 0.7);
+            --border-glow: rgba(255, 255, 255, 0.05);
+            --border-active: #00ffaa;
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --accent: #00ffaa;
+            --accent-glow: rgba(0, 255, 170, 0.2);
+            --danger: #ff3366;
+            --danger-glow: rgba(255, 51, 102, 0.2);
+            --warning: #ffcc00;
         }
 
-        // Intercept LocalStorage .setItem calls from the React UI
-        const originalSetItem = localStorage.setItem;
-        localStorage.setItem = function(key, value) {
-          originalSetItem.apply(this, arguments);
-          if (key === 'veritas_settings') {
-            try {
-              const settings = JSON.parse(value);
-              if (settings.optIn !== undefined) {
-                syncOptInToBackend(settings.optIn);
-              }
-            } catch(e) {}
-          }
-        };
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-        // Sync initially upon page load in case it drifted
-        document.addEventListener('DOMContentLoaded', () => {
-          try {
-            const raw = localStorage.getItem('veritas_settings');
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed.optIn !== undefined) {
-                syncOptInToBackend(parsed.optIn);
-              }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 255, 170, 0.03), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(255, 51, 102, 0.03), transparent 30%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .logo-section i {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .logo-badge {
+            background: rgba(0, 255, 170, 0.1);
+            border: 1px solid rgba(0, 255, 170, 0.2);
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-pill {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glow);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .user-pill:hover {
+            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.03);
+        }
+
+        .user-pill i {
+            color: var(--accent);
+        }
+
+        .btn-logout {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .btn-logout:hover {
+            color: var(--danger);
+        }
+
+        /* Main Workspace layout */
+        main {
+            flex: 1;
+            max-width: 1300px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        @media (min-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
             }
-          } catch(e) {}
-        });
-      })();
-    </script>
-  </body>
-</html>
+        }
 
+        /* Dashboard panels */
+        .glass-panel {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.4s;
+        }
+
+        .panel-title-sec {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+        }
+
+        .panel-title-sec i {
+            color: var(--accent);
+        }
+
+        /* Drop Zone Styles */
+        .drop-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255,255,255,0.01);
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 255, 170, 0.02);
+            box-shadow: inset 0 0 20px rgba(0, 255, 170, 0.05);
+        }
+
+        .drop-zone i {
+            font-size: 3.5rem;
+            color: var(--text-muted);
+            transition: transform 0.3s, color 0.3s;
+        }
+
+        .drop-zone:hover i {
+            transform: translateY(-5px);
+            color: var(--accent);
+        }
+
+        .drop-zone h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .drop-zone p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Image Pre-analysis Preview */
+        .preview-container {
+            display: none;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+            aspect-ratio: 16/10;
+        }
+
+        .preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-actions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 255, 170, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 170, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Scanning Overlay (Visible extraction process layer) */
+        .scan-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(3, 3, 3, 0.95);
+            z-index: 50;
+            padding: 40px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .scan-visualizer {
+            width: 140px;
+            height: 140px;
+            position: relative;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 255, 170, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scan-visualizer::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-top-color: var(--accent);
+            border-bottom-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1.5s linear infinite;
+        }
+
+        .scan-visualizer i {
+            font-size: 3rem;
+            color: var(--accent);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .pipeline-steps {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            transition: all 0.3s;
+            padding: 4px 0;
+        }
+
+        .step-item.active {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .step-item.completed {
+            color: #fff;
+        }
+
+        .step-item i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .step-item.active i {
+            animation: pulse-glow 1s infinite;
+        }
+
+        .step-item.completed i {
+            color: var(--accent);
+        }
+
+        /* Results Panel Styles */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+
+        .results-container.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .verdict-banner {
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .verdict-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .verdict-banner.fake {
+            background: rgba(255, 51, 102, 0.05);
+            border-color: rgba(255, 51, 102, 0.15);
+            color: var(--danger);
+        }
+
+        .verdict-banner.fake::before {
+            background: var(--danger);
+        }
+
+        .verdict-banner.real {
+            background: rgba(0, 255, 170, 0.05);
+            border-color: rgba(0, 255, 170, 0.15);
+            color: var(--accent);
+        }
+
+        .verdict-banner.real::before {
+            background: var(--accent);
+        }
+
+        .verdict-info h4 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .verdict-info p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .verdict-percentage {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+
+        .verdict-percentage span {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* Side-by-side Image Panel */
+        .images-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .img-box {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
+            aspect-ratio: 1;
+            position: relative;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .img-box-label {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Green scanline overlay animation for aligned image */
+        .scan-line-active::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            top: 0;
+            left: 0;
+            animation: scanline 2.5s ease-in-out infinite;
+        }
+
+        /* 9 Metric Grid Breakdown */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        @media (min-width: 600px) {
+            .metrics-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .metric-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .metric-card:hover {
+            background: rgba(255,255,255,0.04);
+            border-color: rgba(255,255,255,0.08);
+        }
+
+        .metric-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .metric-label i {
+            color: var(--accent);
+            font-size: 0.85rem;
+        }
+
+        .metric-value {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .metric-progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .metric-fill {
+            height: 100%;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 1s cubic-bezier(0.1, 0.8, 0.2, 1);
+        }
+
+        /* Tooltip style */
+        .tooltip {
+            visibility: hidden;
+            width: 220px;
+            background-color: #121212;
+            color: #ccc;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(255,255,255,0.1) transparent transparent transparent;
+        }
+
+        .metric-card:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Settings Modal Panel */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.05);
+            max-width: 500px;
+            width: 100%;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 15px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .btn-close:hover {
+            color: #fff;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .form-group input[type="text"] {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 12px;
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.1);
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #fff;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Admin float link */
+        .admin-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 51, 102, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 51, 102, 0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .admin-link:hover {
+            background: var(--danger);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* Animations */
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes scanline {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        @keyframes pulse-glow {
+            0% { opacity: 0.6; text-shadow: 0 0 10px rgba(0, 255, 170, 0.2); }
+            50% { opacity: 1; text-shadow: 0 0 20px rgba(0, 255, 170, 0.6); }
+            100% { opacity: 0.6; text-shadow: 0 0 10px rgba(0, 255, 170, 0.2); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-section">
+            <i class="fa-solid fa-eye-dropper"></i>
+            AEGIS-AI
+            <span class="logo-badge">XGBoost Fusion</span>
+        </div>
+        <div class="nav-actions">
+            {% if user and user.email and user.email.strip().lower() == 'adityajadhav300405@gmail.com' %}
+                <a href="/aegis-override-system" class="admin-link">
+                    <i class="fa-solid fa-shield-halved"></i> Admin Mode
+                </a>
+            {% endif %}
+            <div class="user-pill" onclick="openSettingsModal()">
+                <i class="fa-regular fa-user"></i>
+                <span id="header-username">Operator</span>
+            </div>
+            <a href="/logout" class="btn-logout">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <div class="dashboard-grid">
+            <!-- Left Side: Image Processing and Upload Area -->
+            <div class="glass-panel" id="analyser-panel">
+                <div class="panel-title-sec">
+                    <i class="fa-solid fa-microscope"></i>
+                    Spectrometric Analyzer
+                </div>
+
+                <!-- Drap and Drop Zone -->
+                <div class="drop-zone" id="drop-zone">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <h3>Upload Media Vector</h3>
+                    <p>Drag and drop image or click to navigate directories</p>
+                    <input type="file" id="file-input" style="display: none;" accept="image/*">
+                </div>
+
+                <!-- Preview Box -->
+                <div class="preview-container" id="preview-container">
+                    <img id="preview-img" class="preview-img" src="" alt="Image to analyze">
+                    <div class="preview-actions">
+                        <button class="btn btn-secondary" id="btn-cancel">
+                            <i class="fa-solid fa-trash"></i> Discard
+                        </button>
+                        <button class="btn btn-primary" id="btn-analyze">
+                            <i class="fa-solid fa-bolt"></i> Extract & Fuse
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Processing Layer (The Visible Step-by-Step Scan) -->
+                <div class="scan-overlay" id="scan-overlay">
+                    <div class="scan-visualizer">
+                        <i class="fa-solid fa-fingerprint"></i>
+                    </div>
+                    <h3 style="font-family: 'Space Grotesk', sans-serif;">Forensic Decomposition</h3>
+                    
+                    <div class="pipeline-steps">
+                        <div class="step-item" id="step-0"><i class="fa-solid fa-circle-notch"></i> Aligning facial landmarks (RetinaFace)</div>
+                        <div class="step-item" id="step-1"><i class="fa-solid fa-circle-notch"></i> Analyzing spatial matrix edges (Swin-T)</div>
+                        <div class="step-item" id="step-2"><i class="fa-solid fa-circle-notch"></i> Mapping 2D Fast Fourier spectrum (FFT)</div>
+                        <div class="step-item" id="step-3"><i class="fa-solid fa-circle-notch"></i> Checking VAE generative reconstruction error</div>
+                        <div class="step-item" id="step-4"><i class="fa-solid fa-circle-notch"></i> Scanning statistical texture (Sobel-LBP)</div>
+                        <div class="step-item" id="step-5"><i class="fa-solid fa-circle-notch"></i> Running XGBoost Decision Fusion Model</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Scientific Forensic Report -->
+            <div class="glass-panel" style="justify-content: flex-start;">
+                <div class="panel-title-sec">
+                    <i class="fa-solid fa-chart-line"></i>
+                    Forensic Diagnostics
+                </div>
+
+                <div class="results-container" id="results-container">
+                    <!-- Verdict banner -->
+                    <div class="verdict-banner" id="verdict-banner">
+                        <div class="verdict-info">
+                            <h4 id="verdict-title">DEEPFAKE DETECTED</h4>
+                            <p id="verdict-description">High probability of synthetic rendering detected.</p>
+                        </div>
+                        <div class="verdict-percentage" id="verdict-percentage">
+                            97<span>%</span>
+                        </div>
+                    </div>
+
+                    <!-- Crops comparison -->
+                    <div class="images-comparison">
+                        <div class="img-box">
+                            <img id="result-img-orig" src="" alt="Uploaded original">
+                            <div class="img-box-label">Original Input</div>
+                        </div>
+                        <div class="img-box scan-line-active" id="aligned-box">
+                            <img id="result-img-aligned" src="" alt="Aligned Face">
+                            <div class="img-box-label">Aligned Crop</div>
+                        </div>
+                    </div>
+
+                    <!-- 9 Metrics breakdown -->
+                    <div class="metrics-grid">
+                        <!-- Spatial Artifact Score -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-border-all"></i> Spatial Edge Crop</span>
+                                <span class="metric-value" id="val-spatial">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-spatial"></div></div>
+                            <span class="tooltip">Measures high-frequency spatial noise and boundary discontinuity around the face boundary jawline.</span>
+                        </div>
+
+                        <!-- Frequency Anomaly Score -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-wave-square"></i> FFT Spectrum Energy</span>
+                                <span class="metric-value" id="val-freq">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-freq"></div></div>
+                            <span class="tooltip">Variance signature of high-frequency rings in the power spectrum, commonly left by GAN upsamplers.</span>
+                        </div>
+
+                        <!-- Noise Residual Score -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-bullseye"></i> Generative VAE Error</span>
+                                <span class="metric-value" id="val-latent">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-latent"></div></div>
+                            <span class="tooltip">Reconstruction difference |I - VAE(I)|. High error points to diffusion-specific artifacts.</span>
+                        </div>
+
+                        <!-- Embedding Consistency -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-dna"></i> LBP Texture Metric</span>
+                                <span class="metric-value" id="val-stat">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-stat"></div></div>
+                            <span class="tooltip">Local Binary Patterns mapping contrast ratio to evaluate microscopic skin/hair micro-realism.</span>
+                        </div>
+
+                        <!-- Shannon Entropy -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-chart-area"></i> Shannon Entropy</span>
+                                <span class="metric-value" id="val-entropy">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-entropy"></div></div>
+                            <span class="tooltip">Calculates information density. Generative models tend to over-smooth local gradients.</span>
+                        </div>
+
+                        <!-- Edge Density -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-hashtag"></i> Canny Edge Density</span>
+                                <span class="metric-value" id="val-edges">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-edges"></div></div>
+                            <span class="tooltip">Density ratio of sharp local boundaries. Catches synthetic contrast halos.</span>
+                        </div>
+
+                        <!-- Laplacian Variance -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-image"></i> Laplacian Focus Var</span>
+                                <span class="metric-value" id="val-laplacian">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-laplacian"></div></div>
+                            <span class="tooltip">Calculates image blur. Fakes often contain localized mismatches in depth-of-field.</span>
+                        </div>
+
+                        <!-- Color Kurtosis -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-palette"></i> Color Channel Kurtosis</span>
+                                <span class="metric-value" id="val-kurtosis">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-kurtosis"></div></div>
+                            <span class="tooltip">Calculates statistical outliers in color distributions. Synthetic skin tones lack organic variance.</span>
+                        </div>
+
+                        <!-- JPEG Consistency -->
+                        <div class="metric-card">
+                            <div class="metric-meta">
+                                <span class="metric-label"><i class="fa-solid fa-compress"></i> Block DCT Variance</span>
+                                <span class="metric-value" id="val-jpeg">0.00</span>
+                            </div>
+                            <div class="metric-progress-bar"><div class="metric-fill" id="bar-jpeg"></div></div>
+                            <span class="tooltip">Variance of 2D DCT coefficients. Mismatches reveal double-compression artifacts typical of edits.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state results placeholder -->
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); padding: 40px 0;" id="results-empty">
+                    <i class="fa-solid fa-receipt" style="font-size:3.5rem; opacity:0.1; margin-bottom:15px;"></i>
+                    <p style="font-size:0.9rem;">Awaiting telemetry data from analyzer core.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Operator Profile / Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Operator Terminal Config</h3>
+                <button class="btn-close" onclick="closeSettingsModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="form-group">
+                <label>Operational Call Sign (Username)</label>
+                <input type="text" id="config-username">
+            </div>
+
+            <div class="toggle-group">
+                <div>
+                    <h5 style="font-size:0.9rem; margin-bottom:2px;">Opt-In for AI Learning</h5>
+                    <p style="font-size:0.75rem; color:var(--text-muted);">Allow anonymous upload telemetry to retrain sub-models.</p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="config-optin">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top:15px; margin-top:5px;">
+                <button class="btn btn-secondary" onclick="closeSettingsModal()" style="flex:none; padding:10px 20px;">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSettings()" style="flex:none; padding:10px 20px;">Apply Configurations</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview-img');
+        const btnCancel = document.getElementById('btn-cancel');
+        const btnAnalyze = document.getElementById('btn-analyze');
+        const scanOverlay = document.getElementById('scan-overlay');
+        
+        const resultsContainer = document.getElementById('results-container');
+        const resultsEmpty = document.getElementById('results-empty');
+        const resultImgOrig = document.getElementById('result-img-orig');
+        const resultImgAligned = document.getElementById('result-img-aligned');
+        const alignedBox = document.getElementById('aligned-box');
+        
+        const verdictBanner = document.getElementById('verdict-banner');
+        const verdictTitle = document.getElementById('verdict-title');
+        const verdictDescription = document.getElementById('verdict-description');
+        const verdictPercentage = document.getElementById('verdict-percentage');
+
+        let selectedFile = null;
+
+        // Init - Drag & Drop Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', function() {
+            if (this.files.length) handleSelectedFile(this.files[0]);
+        });
+
+        ['dragenter', 'dragover'].forEach(name => {
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(name => {
+            dropZone.addEventListener(name, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length) handleSelectedFile(files[0]);
+        });
+
+        function handleSelectedFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Uploaded vector must be an image.');
+                return;
+            }
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                dropZone.style.display = 'none';
+                previewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        btnCancel.addEventListener('click', () => {
+            resetAnalyzer();
+        });
+
+        function resetAnalyzer() {
+            selectedFile = null;
+            fileInput.value = '';
+            previewContainer.style.display = 'none';
+            dropZone.style.display = 'flex';
+            scanOverlay.style.display = 'none';
+            resultsContainer.classList.remove('visible');
+            setTimeout(() => {
+                resultsContainer.style.display = 'none';
+                resultsEmpty.style.display = 'flex';
+            }, 300);
+        }
+
+        // Processing layer dynamic display implementation
+        btnAnalyze.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            // Trigger visual scan overlay
+            scanOverlay.style.display = 'flex';
+            resultsEmpty.style.display = 'none';
+            resultsContainer.style.display = 'none';
+
+            // Simulate the processing pipeline step-by-step
+            const steps = [
+                { id: 'step-0', duration: 800 },
+                { id: 'step-1', duration: 1000 },
+                { id: 'step-2', duration: 700 },
+                { id: 'step-3', duration: 1200 },
+                { id: 'step-4', duration: 600 },
+                { id: 'step-5', duration: 800 }
+            ];
+
+            // Start step sequence
+            let currentStepIdx = 0;
+            
+            function runStepVisuals() {
+                if (currentStepIdx > 0) {
+                    const prevStep = document.getElementById(steps[currentStepIdx - 1].id);
+                    prevStep.classList.remove('active');
+                    prevStep.classList.add('completed');
+                    prevStep.querySelector('i').className = 'fa-solid fa-circle-check';
+                }
+                
+                if (currentStepIdx < steps.length) {
+                    const currStep = document.getElementById(steps[currentStepIdx].id);
+                    currStep.classList.add('active');
+                    currStep.querySelector('i').className = 'fa-solid fa-spinner fa-spin';
+                    
+                    setTimeout(() => {
+                        currentStepIdx++;
+                        runStepVisuals();
+                    }, steps[currentStepIdx].duration);
+                }
+            }
+
+            // Reset step UI states
+            steps.forEach(s => {
+                const el = document.getElementById(s.id);
+                el.className = 'step-item';
+                el.querySelector('i').className = 'fa-solid fa-circle-notch';
+            });
+
+            runStepVisuals();
+
+            // Prepare payload
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    // Let the visual completion step play for a second
+                    setTimeout(() => {
+                        scanOverlay.style.display = 'none';
+                        renderForensicReport(data);
+                    }, 1200);
+                } else {
+                    alert('Decomposition failure: ' + data.message);
+                    resetAnalyzer();
+                }
+            } catch (error) {
+                alert('Network failure reaching forensic backend node.');
+                resetAnalyzer();
+            }
+        });
+
+        function renderForensicReport(data) {
+            resultsEmpty.style.display = 'none';
+            resultsContainer.style.display = 'flex';
+            
+            // Trigger animation frame
+            setTimeout(() => {
+                resultsContainer.classList.add('visible');
+            }, 50);
+
+            // Populate images
+            resultImgOrig.src = data.image_url;
+            resultImgAligned.src = data.aligned_url || data.image_url;
+
+            // Aligned crop scan animation toggle
+            if (data.aligned_url) {
+                alignedBox.classList.add('scan-line-active');
+            } else {
+                alignedBox.classList.remove('scan-line-active');
+            }
+
+            // Populate verdict banner
+            const isFake = data.prediction === 'FAKE';
+            verdictBanner.className = 'verdict-banner ' + (isFake ? 'fake' : 'real');
+            verdictTitle.textContent = isFake ? 'Verdict: AI Generated' : 'Verdict: Real Image';
+            verdictDescription.textContent = isFake 
+                ? 'Decomposition scan identifies high-confidence markers of synthetic rendering / deepfake.' 
+                : 'Microscopic texture analysis confirms organic, camera-sensor origins.';
+            verdictPercentage.innerHTML = `${Math.round(data.confidence)}<span>%</span>`;
+
+            // Populate 9 Metrics progress values & bar widths
+            const f = data.features;
+            
+            // Helper to normalise and set metrics
+            function setMetric(id, val, max, scale = 1) {
+                const elVal = document.getElementById('val-' + id);
+                const elBar = document.getElementById('bar-' + id);
+                elVal.textContent = val;
+
+                // Scale value to a readable percentage width
+                let percent = Math.min(100, Math.max(0, (val / max) * 100 * scale));
+                elBar.style.width = percent + '%';
+                
+                // Color coding: red if fake (extreme), green if organic
+                if (isFake) {
+                    elBar.style.background = 'var(--danger)';
+                } else {
+                    elBar.style.background = 'var(--accent)';
+                }
+            }
+
+            // Normalisation boundaries derived from dataset means
+            setMetric('spatial', f.spatial_score, 2.0);
+            setMetric('freq', f.freq_score, 5000000000);
+            setMetric('latent', f.latent_score, 1.5);
+            setMetric('stat', f.stat_score, 0.25);
+            setMetric('entropy', f.entropy, 8.0);
+            setMetric('edges', f.edge_density, 0.5);
+            setMetric('laplacian', f.laplacian_variance, 20000);
+            setMetric('kurtosis', Math.abs(f.color_kurtosis), 3.0);
+            setMetric('jpeg', f.jpeg_consistency, 4000);
+        }
+
+        // Settings Terminal Management
+        const modal = document.getElementById('settings-modal');
+        const configUsername = document.getElementById('config-username');
+        const configOptin = document.getElementById('config-optin');
+        const headerUsername = document.getElementById('header-username');
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/me');
+                const data = await response.json();
+                if (data.success) {
+                    headerUsername.textContent = data.user.username;
+                    configUsername.value = data.user.username;
+                    
+                    // Local Storage fallback synchronization
+                    const settingsRaw = localStorage.getItem('aegis_settings');
+                    if (settingsRaw) {
+                        const settings = JSON.parse(settingsRaw);
+                        configOptin.checked = settings.optIn === true;
+                    }
+                }
+            } catch(e) {
+                console.error("Failed to sync session settings details.", e);
+            }
+        }
+
+        function openSettingsModal() {
+            modal.style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            modal.style.display = 'none';
+        }
+
+        async function saveSettings() {
+            const newUsername = configUsername.value.trim();
+            const optIn = configOptin.checked;
+
+            if (newUsername.length < 5) {
+                alert("Operation callsign must contain at least 5 character tokens.");
+                return;
+            }
+
+            try {
+                // Save CallSign Name
+                const uRes = await fetch('/api/update_username', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ new_username: newUsername })
+                });
+                const uData = await uRes.json();
+                
+                if (!uData.success) {
+                    alert("Sync Error: " + uData.message);
+                    return;
+                }
+
+                // Save OptIn
+                const oRes = await fetch('/api/update_optin', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ai_data_optin: optIn })
+                });
+                
+                // Write into localStorage to match App.js legacy triggers
+                localStorage.setItem('aegis_settings', JSON.stringify({ optIn }));
+
+                headerUsername.textContent = newUsername;
+                closeSettingsModal();
+                alert("Terminal parameters updated successfully.");
+            } catch (error) {
+                alert("Network failure applying system parameter updates.");
+            }
+        }
+
+        // Close modal when clicking outside contents container
+        window.onclick = function(e) {
+            if (e.target === modal) {
+                closeSettingsModal();
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', loadProfile);
+    </script>
+</body>
+</html>
