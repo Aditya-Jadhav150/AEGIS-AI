@@ -1145,21 +1145,27 @@
     <div class="modal" id="settings-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Operator Terminal Config</h3>
+                <h3>Settings</h3>
                 <button class="btn-close" onclick="closeSettingsModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div class="form-group">
-                <label>Operational Call Sign (Username)</label>
+                <label>Username</label>
                 <input type="text" id="config-username">
             </div>
 
-            <div class="toggle-group">
+            <div class="toggle-group" style="align-items: flex-start;">
                 <div>
-                    <h5 style="font-size:0.9rem; margin-bottom:2px;">Opt-In for AI Learning</h5>
-                    <p style="font-size:0.75rem; color:var(--text-muted);">Allow anonymous upload telemetry to retrain sub-models.</p>
+                    <h5 style="font-size:0.9rem; margin-bottom:6px;">Opt-in For AI training</h5>
+                    <p style="font-size:0.75rem; color:var(--text-muted); line-height: 1.4;">
+                        Allow administration and developers to utilize uploaded telemetry/images for:
+                        <br>• Machine learning model training and fine-tuning
+                        <br>• Synthetic pattern recognition and model betterment
+                        <br>• Benchmark dataset optimization
+                        <br>• Improving neural deepfake detector metrics
+                    </p>
                 </div>
-                <label class="toggle-switch">
+                <label class="toggle-switch" style="margin-top: 2px;">
                     <input type="checkbox" id="config-optin">
                     <span class="slider"></span>
                 </label>
@@ -1404,20 +1410,17 @@
         const configOptin = document.getElementById('config-optin');
         const headerUsername = document.getElementById('header-username');
 
+        let currentSyncedUsername = 'Operator';
+
         async function loadProfile() {
             try {
                 const response = await fetch('/api/me');
                 const data = await response.json();
                 if (data.success) {
+                    currentSyncedUsername = data.user.username;
                     headerUsername.textContent = data.user.username;
                     configUsername.value = data.user.username;
-                    
-                    // Local Storage fallback synchronization
-                    const settingsRaw = localStorage.getItem('aegis_settings');
-                    if (settingsRaw) {
-                        const settings = JSON.parse(settingsRaw);
-                        configOptin.checked = settings.optIn === true;
-                    }
+                    configOptin.checked = data.user.ai_data_optin === true;
                 }
             } catch(e) {
                 console.error("Failed to sync session settings details.", e);
@@ -1430,6 +1433,8 @@
 
         function closeSettingsModal() {
             modal.style.display = 'none';
+            // Revert settings input to last synced username on close/cancel
+            configUsername.value = currentSyncedUsername;
         }
 
         async function saveSettings() {
@@ -1437,22 +1442,27 @@
             const optIn = configOptin.checked;
 
             if (newUsername.length < 5) {
-                alert("Operation callsign must contain at least 5 character tokens.");
+                alert("Username must contain at least 5 characters.");
+                configUsername.value = currentSyncedUsername;
                 return;
             }
 
             try {
-                // Save CallSign Name
-                const uRes = await fetch('/api/update_username', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ new_username: newUsername })
-                });
-                const uData = await uRes.json();
-                
-                if (!uData.success) {
-                    alert("Sync Error: " + uData.message);
-                    return;
+                // Save Username if it was changed
+                if (newUsername !== currentSyncedUsername) {
+                    const uRes = await fetch('/api/update_username', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ new_username: newUsername })
+                    });
+                    const uData = await uRes.json();
+                    
+                    if (!uData.success) {
+                        alert("Sync Error: " + uData.message);
+                        configUsername.value = currentSyncedUsername;
+                        return;
+                    }
+                    currentSyncedUsername = newUsername;
                 }
 
                 // Save OptIn
@@ -1465,11 +1475,12 @@
                 // Write into localStorage to match App.js legacy triggers
                 localStorage.setItem('aegis_settings', JSON.stringify({ optIn }));
 
-                headerUsername.textContent = newUsername;
+                headerUsername.textContent = currentSyncedUsername;
                 closeSettingsModal();
-                alert("Terminal parameters updated successfully.");
+                alert("Settings updated successfully.");
             } catch (error) {
-                alert("Network failure applying system parameter updates.");
+                alert("Network failure applying settings updates.");
+                configUsername.value = currentSyncedUsername;
             }
         }
 

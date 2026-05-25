@@ -1,14 +1,838 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-    <script type="module" crossorigin src="/static/login/assets/index-BI13aJIV.js"></script>
-    <link rel="stylesheet" crossorigin href="/static/login/assets/index-CcPvzCMz.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS-AI | Authentication</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --bg-dark: #030303;
+            --bg-panel: #0a0a0a;
+            --bg-glass: rgba(13, 13, 13, 0.75);
+            --border-glow: rgba(255, 255, 255, 0.05);
+            --border-active: #00ffaa;
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --accent: #00ffaa;
+            --accent-glow: rgba(0, 255, 170, 0.2);
+            --danger: #ff3366;
+            --danger-glow: rgba(255, 51, 102, 0.2);
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(0, 255, 170, 0.03), transparent 30%),
+                radial-gradient(circle at 85% 85%, rgba(255, 51, 102, 0.03), transparent 30%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        /* Top Header style matching index.html */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            z-index: 100;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .logo-section i {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 255, 170, 0.05);
+            border: 1px solid rgba(0, 255, 170, 0.15);
+            font-size: 0.65rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .status-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse-glow-dot 2s infinite;
+        }
+
+        /* Main Form Container */
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            margin-top: 80px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .glass-panel {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 40px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            position: relative;
+            overflow: hidden;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Border corner indicators */
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 12px; height: 12px;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            border-left: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-left-radius: 16px;
+        }
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; width: 12px; height: 12px;
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            border-right: 2px solid rgba(255, 255, 255, 0.2);
+            border-top-right-radius: 16px;
+        }
+
+        .panel-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .panel-header h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+        }
+
+        .panel-header p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        /* Form Inputs */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 14px 14px 44px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--accent);
+            background: rgba(0, 255, 170, 0.01);
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.1);
+        }
+
+        .input-wrapper input:focus + i {
+            color: var(--accent);
+            text-shadow: 0 0 5px var(--accent-glow);
+        }
+
+        /* Error/Status Box */
+        .alert-box {
+            display: none;
+            background: rgba(255, 51, 102, 0.08);
+            border: 1px solid rgba(255, 51, 102, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.8rem;
+            color: var(--danger);
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-box i {
+            font-size: 1rem;
+        }
+
+        /* T&C Checkbox Styling */
+        .terms-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .terms-container input[type="checkbox"] {
+            margin-top: 3px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .terms-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .terms-text strong {
+            color: var(--text-main);
+        }
+
+        /* Buttons */
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 255, 170, 0.2);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 255, 170, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Google button container */
+        .google-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0;
+        }
+
+        .google-divider::before, .google-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .google-divider:not(:empty)::before {
+            margin-right: 15px;
+        }
+
+        .google-divider:not(:empty)::after {
+            margin-left: 15px;
+        }
+
+        .google-btn-wrapper {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        /* Toggle Link */
+        .switch-mode-text {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .switch-mode-text button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: underline;
+            outline: none;
+            padding: 0 4px;
+        }
+
+        .switch-mode-text button:hover {
+            color: var(--accent);
+        }
+
+        /* Password guidelines */
+        .guidelines {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: -5px;
+        }
+
+        .guideline-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .guideline-item.valid {
+            color: var(--accent);
+        }
+
+        .guideline-item i {
+            font-size: 0.75rem;
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.15);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* Animations */
+        @keyframes pulse-glow-dot {
+            0% { opacity: 0.5; box-shadow: 0 0 0 rgba(0, 255, 170, 0); }
+            50% { opacity: 1; box-shadow: 0 0 10px rgba(0, 255, 170, 0.8); }
+            100% { opacity: 0.5; box-shadow: 0 0 0 rgba(0, 255, 170, 0); }
+        }
+
+        /* Terms Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.08);
+            max-width: 500px;
+            width: 100%;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 10px;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .btn-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+        }
+        
+        .modal-body::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .modal-body::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.01);
+        }
+        
+        .modal-body::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 12px 16px;
+            }
+            .logo-section {
+                font-size: 1.1rem;
+            }
+            .status-badge {
+                font-size: 0.6rem;
+                padding: 3px 8px;
+            }
+            .glass-panel {
+                padding: 25px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-section">
+            <i class="fa-solid fa-eye-dropper"></i>
+            AEGIS-AI
+        </div>
+        <div class="status-badge">
+            <span class="dot"></span>
+            Operational core: Active
+        </div>
+    </header>
+
+    <div class="auth-container">
+        <div class="glass-panel">
+            <div class="panel-header">
+                <h1 id="auth-title">Log In</h1>
+                <p id="auth-subtitle">AEGIS-AI Secure Portal</p>
+            </div>
+
+            <!-- Error Notification Banner -->
+            <div class="alert-box" id="error-banner">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="error-msg">Invalid auth parameters.</span>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- Username -->
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="username" placeholder="OPERATOR_CODE" required minlength="5">
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" placeholder="••••••••" required>
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                    </div>
+
+                    <!-- Signup Password Guidelines -->
+                    <div class="guidelines" id="password-guidelines">
+                        <div class="guideline-item" id="rule-length"><i class="fa-solid fa-circle-notch"></i> Min 8 characters</div>
+                        <div class="guideline-item" id="rule-case"><i class="fa-solid fa-circle-notch"></i> Uppercase & lowercase</div>
+                        <div class="guideline-item" id="rule-number"><i class="fa-solid fa-circle-notch"></i> At least one number</div>
+                        <div class="guideline-item" id="rule-special"><i class="fa-solid fa-circle-notch"></i> One special character</div>
+                    </div>
+
+                    <!-- Terms & Conditions Checkbox -->
+                    <div class="form-group" style="margin-top: 5px;">
+                        <label class="terms-container">
+                            <input type="checkbox" id="terms-checkbox" required style="margin-top: 2px;">
+                            <span class="terms-text">
+                                I agree to the <a href="#" onclick="openTermsModal(event)" style="color: var(--accent); text-decoration: underline; font-weight: 600;">Terms & Conditions</a>
+                            </span>
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-submit" id="btn-submit">
+                        <span id="btn-text">Log In</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+
+            <div class="google-divider">Secure SSO Link</div>
+
+            <!-- Google OAuth Sign-in Button -->
+            <div class="google-btn-wrapper">
+                <div id="google-signin-btn"></div>
+            </div>
+
+            <!-- Toggle Mode -->
+            <div class="switch-mode-text">
+                <span id="switch-prompt">Don't have an operator account?</span>
+                <button type="button" id="btn-toggle-mode" onclick="toggleAuthMode()">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        AEGIS-AI Forensic Intelligence Systems<br>
+        Connection is encrypted & secure
+    </footer>
+
+    <script>
+        // Mode state
+        let isLoginMode = true;
+
+        // DOM elements
+        const authTitle = document.getElementById('auth-title');
+        const authSubtitle = document.getElementById('auth-subtitle');
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnText = document.getElementById('btn-text');
+        const errorBanner = document.getElementById('error-banner');
+        const errorMsg = document.getElementById('error-msg');
+        const toggleBtn = document.getElementById('btn-toggle-mode');
+        const switchPrompt = document.getElementById('switch-prompt');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const termsCheckbox = document.getElementById('terms-checkbox');
+        const passwordGuidelines = document.getElementById('password-guidelines');
+
+        // Signup Guidelines elements
+        const ruleLength = document.getElementById('rule-length');
+        const ruleCase = document.getElementById('rule-case');
+        const ruleNumber = document.getElementById('rule-number');
+        const ruleSpecial = document.getElementById('rule-special');
+
+        // Toggle Login / Register
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            errorBanner.style.display = 'none';
+            
+            if (isLoginMode) {
+                authTitle.textContent = "Log In";
+                authSubtitle.textContent = "AEGIS-AI Secure Portal";
+                btnText.textContent = "Log In";
+                switchPrompt.textContent = "Don't have an operator account?";
+                toggleBtn.textContent = "Sign Up";
+                passwordGuidelines.style.display = 'none';
+                passwordInput.removeAttribute('pattern');
+            } else {
+                authTitle.textContent = "Sign Up";
+                authSubtitle.textContent = "Create an account";
+                btnText.textContent = "Sign Up";
+                switchPrompt.textContent = "Already have an operator account?";
+                toggleBtn.textContent = "Log In";
+                passwordGuidelines.style.display = 'flex';
+                // Trigger guidelines check on input
+                checkPasswordRules();
+            }
+        }
+
+        // Live password validation for signup mode
+        passwordInput.addEventListener('input', () => {
+            if (!isLoginMode) {
+                checkPasswordRules();
+            }
+        });
+
+        function checkPasswordRules() {
+            const val = passwordInput.value;
+            
+            // Length >= 8
+            const isLengthValid = val.length >= 8;
+            updateRuleUI(ruleLength, isLengthValid);
+
+            // Case check
+            const hasUpper = /[A-Z]/.test(val);
+            const hasLower = /[a-z]/.test(val);
+            const isCaseValid = hasUpper && hasLower;
+            updateRuleUI(ruleCase, isCaseValid);
+
+            // Number check
+            const isNumberValid = /[0-9]/.test(val);
+            updateRuleUI(ruleNumber, isNumberValid);
+
+            // Special char check
+            const isSpecialValid = /[!@#$%^&*(),.?":{}|<>]/.test(val);
+            updateRuleUI(ruleSpecial, isSpecialValid);
+        }
+
+        function updateRuleUI(el, isValid) {
+            if (isValid) {
+                el.classList.add('valid');
+                el.querySelector('i').className = 'fa-solid fa-circle-check';
+            } else {
+                el.classList.remove('valid');
+                el.querySelector('i').className = 'fa-solid fa-circle-notch';
+            }
+        }
+
+        // Handle standard Form Submit (Login / Signup)
+        async function handleAuthSubmit(event) {
+            event.preventDefault();
+            errorBanner.style.display = 'none';
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (username.length < 5) {
+                showError("Username must contain at least 5 character tokens.");
+                return;
+            }
+
+            if (!termsCheckbox.checked) {
+                showError("Identity Verification blocked: You must agree to the Terms & Conditions.");
+                return;
+            }
+
+            // Client-side signup checks
+            if (!isLoginMode) {
+                const hasUpper = /[A-Z]/.test(password);
+                const hasLower = /[a-z]/.test(password);
+                const hasNum = /[0-9]/.test(password);
+                const hasSpec = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+                if (password.length < 8 || !hasUpper || !hasLower || !hasNum || !hasSpec) {
+                    showError("Registry Blocked: Password does not meet all secure complexity parameters.");
+                    return;
+                }
+            }
+
+            btnSubmit.disabled = true;
+            btnText.textContent = isLoginMode ? "Authenticating..." : "Registering...";
+
+            const endpoint = isLoginMode ? '/api/login' : '/api/register';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Success redirect
+                    window.location.href = '/';
+                } else {
+                    showError(data.message || "Authentication signature rejected.");
+                    btnSubmit.disabled = false;
+                    btnText.textContent = isLoginMode ? "Log In" : "Sign Up";
+                }
+            } catch (error) {
+                showError("Network disruption: Failed to reach auth gateway node.");
+                btnSubmit.disabled = false;
+                btnText.textContent = isLoginMode ? "Log In" : "Sign Up";
+            }
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorBanner.style.display = 'flex';
+            // Scroll to error if small screen
+            errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Google Authentication Callback
+        async function handleCredentialResponse(response) {
+            errorBanner.style.display = 'none';
+            
+            if (!termsCheckbox.checked) {
+                showError("Identity Verification blocked: You must agree to the Terms & Conditions before connecting via Google SSO.");
+                // Highlight terms container
+                termsCheckbox.focus();
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/auth/google", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        credential: response.credential, 
+                        clientId: response.clientId 
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    window.location.href = "/";
+                } else {
+                    showError(data.message || "Google Authentication signature rejected.");
+                }
+            } catch (err) {
+                showError("Network disruption: Google Auth validation node unreachable.");
+            }
+        }
+
+        // Terms Modal actions lazily resolved to avoid element loading order issues
+        function openTermsModal(event) {
+            if (event) event.preventDefault();
+            const modal = document.getElementById('terms-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeTermsModal() {
+            const modal = document.getElementById('terms-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // Close modal when clicking outside contents container
+        window.onclick = function(e) {
+            const modal = document.getElementById('terms-modal');
+            if (modal && e.target === modal) {
+                closeTermsModal();
+            }
+        }
+
+        // Initialize Google Sign-In Button on Page Load
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: "324506141677-i5110j0ld14iveadefj2qnui4o7eub1t.apps.googleusercontent.com",
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-signin-btn"),
+                { 
+                    theme: "filled_black", 
+                    size: "large", 
+                    type: "standard", 
+                    shape: "rectangular", 
+                    text: "continue_with",
+                    logo_alignment: "left",
+                    width: "380px"
+                }
+            );
+        }
+    </script>
+
+    <!-- Terms & Conditions Modal Overlay -->
+    <div class="modal" id="terms-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Terms & Conditions</h3>
+                <button type="button" class="btn-close" onclick="closeTermsModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>Welcome to AEGIS-AI. By accessing or registering on this platform, you agree to comply with the following policies:</p>
+                
+                <p><strong>1. Data Privacy & Processing</strong><br>
+                We believe in privacy and user safety. All forensic analyses of uploaded images are performed in-memory on our secure host nodes. The image is deleted immediately after the diagnostic report is generated.</p>
+
+                <p><strong>2. Machine Learning & Model Training</strong><br>
+                We do not use your images or data for training machine learning models unless you explicitly opt-in to AI Training under the Settings panel of your dashboard.</p>
+
+                <p><strong>3. Account Governance</strong><br>
+                Administrators reserve the right to manage and delete operator accounts to protect network security. In the event of deletion, the email on file will be notified with reasons.</p>
+
+                <p><strong>4. Security & Encrypted Traffic</strong><br>
+                Your session is protected via Secure SameSite cookies and encrypted tokens. Unauthorized access or abuse is strictly monitored.</p>
+            </div>
+            <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-top: 5px;">
+                <button type="button" class="btn-submit" onclick="closeTermsModal()" style="width: auto; padding: 10px 20px; font-size: 0.8rem;">Acknowledge</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

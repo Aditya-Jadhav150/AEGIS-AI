@@ -263,6 +263,29 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        .btn-danger {
+            background: rgba(255, 51, 102, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 51, 102, 0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(255, 51, 102, 0.3);
+        }
+
         @media (max-width: 768px) {
             .admin-header {
                 padding: 12px 16px;
@@ -333,11 +356,12 @@
                             <th>Auth Signature</th>
                             <th>Identity Lock Status</th>
                             <th>AI Data Opt-In</th>
+                            <th style="text-align: center;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="users-tbody">
                         <tr>
-                            <td colspan="6">
+                            <td colspan="7">
                                 <div class="empty-state">
                                     <i class="fa-solid fa-circle-notch spin"></i>
                                     <div>Decrypting Database...</div>
@@ -351,6 +375,8 @@
     </div>
 
     <script>
+        const adminUserId = {{ user.id }};
+
         async function fetchUsers() {
             const tbody = document.getElementById('users-tbody');
             const refreshIcon = document.getElementById('refresh-icon');
@@ -381,7 +407,7 @@
             if (users.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="empty-state">
                                 <i class="fa-solid fa-ghost"></i>
                                 <div>No operators found in sector.</div>
@@ -424,6 +450,14 @@
                     ? `<div style="color: var(--accent); font-weight: 600;"><i class="fa-solid fa-check"></i> Enabled</div>`
                     : `<div style="color: var(--text-muted);"><i class="fa-solid fa-xmark"></i> Disabled</div>`;
 
+                // Actions Button
+                let actionsHtml = '';
+                if (user.id !== adminUserId) {
+                    actionsHtml = `<td style="text-align: center;"><button class="btn-danger" onclick="confirmDeleteUser(${user.id}, '${user.username}')"><i class="fa-solid fa-trash"></i> Delete</button></td>`;
+                } else {
+                    actionsHtml = `<td style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">(Active Admin)</td>`;
+                }
+
                 tr.innerHTML = `
                     <td class="user-id">#${String(user.id).padStart(4, '0')}</td>
                     <td style="font-weight: 500;">${user.username}</td>
@@ -431,16 +465,49 @@
                     <td>${authBadge}</td>
                     <td>${lockStatusHtml}</td>
                     <td>${optInHtml}</td>
+                    ${actionsHtml}
                 `;
                 tbody.appendChild(tr);
             });
+        }
+
+        async function confirmDeleteUser(userId, username) {
+            const reason = prompt(`Enter deletion reason for operator '${username}':`);
+            if (reason === null) return; // User cancelled prompt
+            
+            const trimmedReason = reason.trim();
+            if (!trimmedReason) {
+                alert("Deletion blocked. A reason is required to notify the operator.");
+                return;
+            }
+            
+            if (!confirm(`Are you absolutely sure you want to permanently delete operator account '${username}'?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/delete_user', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: userId, reason: trimmedReason })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    fetchUsers(); // Refresh database view
+                } else {
+                    alert("Deletion Error: " + data.message);
+                }
+            } catch (error) {
+                alert("Network error. Failed to delete operator.");
+            }
         }
 
         function showError(msg) {
             const tbody = document.getElementById('users-tbody');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="empty-state">
                             <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); opacity: 1;"></i>
                             <div style="color: var(--danger);">${msg}</div>

@@ -421,7 +421,8 @@ def api_me():
             "email": current_user.email,
             "is_locked": is_locked,
             "days_remaining": days_remaining,
-            "is_google": current_user.google_id is not None
+            "is_google": current_user.google_id is not None,
+            "ai_data_optin": current_user.ai_data_optin
         }
     })
 
@@ -491,6 +492,97 @@ def api_predict():
             return jsonify(result)
         else:
             return jsonify({"success": False, "message": result.get("error")}), 500
+
+def send_deletion_email(recipient_email, username, reason):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    try:
+        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    except ValueError:
+        smtp_port = 587
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_password = os.environ.get("SMTP_PASSWORD")
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user or "noreply@aegis-ai.com")
+
+    subject = "AEGIS-AI Account Deletion Notification"
+    body = f"""Dear {username},
+
+This is an automated notification to inform you that your operator account on AEGIS-AI has been deleted by an administrator.
+
+Reason for Deletion:
+{reason}
+
+If you believe this was in error, please contact your system administrator.
+
+Best regards,
+AEGIS-AI Security Core
+"""
+
+    print(f"--- SIMULATED EMAIL TO {recipient_email} ---")
+    print(f"Subject: {subject}")
+    print(f"Body:\n{body}")
+    print("-----------------------------------------")
+
+    if not smtp_user or not smtp_password:
+        print("SMTP credentials not configured. Email simulation completed.")
+        return True
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_from
+        msg['To'] = recipient_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_from, recipient_email, msg.as_string())
+        server.close()
+        print("Email sent successfully via SMTP.")
+        return True
+    except Exception as e:
+        print(f"Failed to send email via SMTP: {e}")
+        return False
+
+@app.route('/api/admin/delete_user', methods=['POST'])
+@login_required
+def api_admin_delete_user():
+    # Admin verification: match the specified email address
+    if not current_user.email or current_user.email.strip().lower() != 'adityajadhav300405@gmail.com':
+        return jsonify({"success": False, "message": "FORBIDDEN: Admin access only."}), 403
+
+    data = request.json or {}
+    user_id = data.get('user_id')
+    reason = data.get('reason', 'No reason specified by administration.')
+
+    if not user_id:
+        return jsonify({"success": False, "message": "Missing user ID."}), 400
+
+    user_to_delete = User.query.get(user_id)
+    if not user_to_delete:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    if user_to_delete.id == current_user.id:
+        return jsonify({"success": False, "message": "Self-destruction blocked. You cannot delete your own admin account."}), 400
+
+    username = user_to_delete.username
+    recipient_email = user_to_delete.email
+
+    try:
+        db.session.delete(user_to_delete)
+        db.session.commit()
+
+        # Send/Log notification email if user has a valid email
+        if recipient_email and recipient_email != "Unassigned":
+            send_deletion_email(recipient_email, username, reason)
+
+        return jsonify({"success": True, "message": f"Operator '{username}' deleted successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Database write error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
