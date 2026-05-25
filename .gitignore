@@ -32,6 +32,6 @@ users.db
 .DS_Store
 Thumbs.db
 
-# Force include model artifacts for HF Space deployment
-!dataset/fusion_engine_best.pkl
-!dataset/scaler.pkl
+# Force include model artifacts for HF Space deployment (JSON only)
+!dataset/fusion_engine_best.json
+!dataset/scaler.json

@@ -71,8 +71,8 @@ def compute_jpeg_consistency(img_rgb):
 def main():
     parser = argparse.ArgumentParser(description="Run forensic inference on a single image")
     parser.add_argument("--image", "-i", required=True, help="Path to image file")
-    parser.add_argument("--model", default=os.path.join('dataset', 'fusion_engine_best.pkl'), help="Path to saved XGBoost model")
-    parser.add_argument("--scaler", default=os.path.join('dataset', 'scaler.pkl'), help="Path to saved StandardScaler")
+    parser.add_argument("--model", default=os.path.join('dataset', 'fusion_engine_best.json'), help="Path to saved XGBoost model JSON")
+    parser.add_argument("--scaler", default=os.path.join('dataset', 'scaler.json'), help="Path to saved StandardScaler JSON")
     args = parser.parse_args()
 
     # Load model & scaler
@@ -80,8 +80,20 @@ def main():
         raise FileNotFoundError(f"Model file not found: {args.model}")
     if not os.path.isfile(args.scaler):
         raise FileNotFoundError(f"Scaler file not found: {args.scaler}")
-    model = joblib.load(args.model)
-    scaler: StandardScaler = joblib.load(args.scaler)
+        
+    from xgboost import XGBClassifier
+    import json
+    
+    model = XGBClassifier()
+    model.load_model(args.model)
+    
+    scaler = StandardScaler()
+    with open(args.scaler, 'r') as f:
+        s_data = json.load(f)
+    scaler.mean_ = np.array(s_data["mean"])
+    scaler.var_ = np.array(s_data["var"])
+    scaler.scale_ = np.array(s_data["scale"])
+    scaler.n_features_in_ = s_data["n_features_in"]
 
     # -------------------- Load image & align --------------------
     bgr = cv2.imread(args.image)

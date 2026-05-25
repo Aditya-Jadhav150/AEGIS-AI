@@ -92,14 +92,28 @@ error_loop = None
 stat_extractor = None
 
 try:
-    model_path = os.path.join('dataset', 'fusion_engine_best.pkl')
-    scaler_path = os.path.join('dataset', 'scaler.pkl')
+    model_path = os.path.join('dataset', 'fusion_engine_best.json')
+    scaler_path = os.path.join('dataset', 'scaler.json')
     if os.path.exists(model_path) and os.path.exists(scaler_path):
-        fusion_model = joblib.load(model_path)
-        fusion_scaler = joblib.load(scaler_path)
-        print("🗄️  XGBoost Fusion Model and Scaler loaded successfully.")
+        from xgboost import XGBClassifier
+        import json
+        
+        # Load XGBoost model from JSON
+        fusion_model = XGBClassifier()
+        fusion_model.load_model(model_path)
+        
+        # Reconstruct StandardScaler from JSON parameters
+        fusion_scaler = StandardScaler()
+        with open(scaler_path, 'r') as f:
+            s_data = json.load(f)
+        fusion_scaler.mean_ = np.array(s_data["mean"])
+        fusion_scaler.var_ = np.array(s_data["var"])
+        fusion_scaler.scale_ = np.array(s_data["scale"])
+        fusion_scaler.n_features_in_ = s_data["n_features_in"]
+        
+        print("🗄️  XGBoost Fusion Model and Scaler loaded from plain-text JSON successfully.")
     else:
-        print("⚠️  Warning: Model/Scaler pkl files not found. Please train first.")
+        print("⚠️  Warning: Model/Scaler JSON files not found. Please train first.")
         
     aligner = GeometricAligner(device=device)
     error_loop = DiffusionErrorLoop(device=device)

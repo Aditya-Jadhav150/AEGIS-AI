@@ -76,6 +76,6 @@ Werkzeug==3.1.7
 gunicorn
 google-auth
 albumentations
-insightface
 xgboost
 scikit-image
+pandas

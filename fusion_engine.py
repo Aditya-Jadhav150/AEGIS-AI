@@ -66,14 +66,27 @@ def main():
     print(example_df.head(5))
 
     # --------------------------------------------------------------
-    # Persist the trained model and scaler for inference
+    # Persist the trained model and scaler for inference (Plain Text JSON)
     # --------------------------------------------------------------
-    model_path = os.path.join('dataset', 'fusion_engine_best.pkl')
-    scaler_path = os.path.join('dataset', 'scaler.pkl')
-    joblib.dump(model, model_path)
-    joblib.dump(scaler, scaler_path)
-    print(f"🗄️  Model saved to {model_path}")
-    print(f"📏  Scaler saved to {scaler_path}")
+    import json
+    model_json_path = os.path.join('dataset', 'fusion_engine_best.json')
+    scaler_json_path = os.path.join('dataset', 'scaler.json')
+    
+    # Save XGBoost model to JSON
+    model.save_model(model_json_path)
+    
+    # Save StandardScaler parameters to JSON
+    scaler_data = {
+        "mean": scaler.mean_.tolist(),
+        "var": scaler.var_.tolist(),
+        "scale": scaler.scale_.tolist(),
+        "n_features_in": int(scaler.n_features_in_)
+    }
+    with open(scaler_json_path, 'w') as f:
+        json.dump(scaler_data, f)
+        
+    print(f"🗄️  Model saved as text to {model_json_path}")
+    print(f"📏  Scaler saved as text to {scaler_json_path}")
 
 if __name__ == '__main__':
     main()
