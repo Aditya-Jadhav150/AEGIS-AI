@@ -180,9 +180,15 @@ def predict_image(image_path):
         aligned_filename = "aligned_" + filename
         aligned_filepath = os.path.join(os.path.dirname(image_path), aligned_filename)
         
-        # Crop is RGB, convert to BGR for OpenCV save
-        aligned_np = (aligned.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-        aligned_bgr = cv2.cvtColor(aligned_np, cv2.COLOR_RGB2BGR)
+        # Denormalize cropped face back to clean RGB [0-255]
+        mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+        std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+        aligned_np = aligned.cpu().numpy()
+        unnorm = (aligned_np * std + mean) * 255.0
+        aligned_rgb = np.clip(unnorm, 0, 255).transpose(1, 2, 0).astype(np.uint8)
+        
+        # Save BGR to disk for display on website
+        aligned_bgr = cv2.cvtColor(aligned_rgb, cv2.COLOR_RGB2BGR)
         cv2.imwrite(aligned_filepath, aligned_bgr)
             
         # 2. Extract features
@@ -204,12 +210,12 @@ def predict_image(image_path):
         stat_tensor = stat_extractor(aligned.unsqueeze(0)).cpu()
         stat_score = float(torch.mean(stat_tensor).item())
         
-        # Conversions and statistics
-        entropy_score = compute_entropy(aligned_np)
-        edge_density_score = compute_edge_density(aligned_np)
-        laplacian_var_score = compute_laplacian_variance(aligned_np)
-        color_kurtosis_score = compute_color_kurtosis(aligned_np)
-        jpeg_consistency_score = compute_jpeg_consistency(aligned_np)
+        # Conversions and statistics (run on clean unnormalized RGB image)
+        entropy_score = compute_entropy(aligned_rgb)
+        edge_density_score = compute_edge_density(aligned_rgb)
+        laplacian_var_score = compute_laplacian_variance(aligned_rgb)
+        color_kurtosis_score = compute_color_kurtosis(aligned_rgb)
+        jpeg_consistency_score = compute_jpeg_consistency(aligned_rgb)
         
         # 3. Assemble features
         feature_dict = {

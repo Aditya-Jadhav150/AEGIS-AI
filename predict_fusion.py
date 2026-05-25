@@ -123,7 +123,13 @@ def main():
     stat_score = float(torch.mean(stat_tensor).item())
 
     # -------------------- New lightweight descriptors --------------------
-    rgb = (aligned.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+    # Denormalize: pixel = (normalized * std + mean) * 255
+    mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+    std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+    aligned_np = aligned.cpu().numpy()
+    unnorm = (aligned_np * std + mean) * 255.0
+    rgb = np.clip(unnorm, 0, 255).transpose(1, 2, 0).astype(np.uint8)
+
     entropy_score = compute_entropy(rgb)
     edge_density_score = compute_edge_density(rgb)
     laplacian_var_score = compute_laplacian_variance(rgb)

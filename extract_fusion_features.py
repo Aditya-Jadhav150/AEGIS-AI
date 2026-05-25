@@ -108,10 +108,14 @@ def main():
         stat_score = torch.mean(stat.float()).item() if stat is not None else 0.0
 
         # ---- Convert the aligned tensor back to a NumPy RGB image for the new descriptors ----
-        # The stored tensor is already normalized (range ≈0‑1). Bring it back to uint8.
-        rgb = (spatial.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8) if spatial is not None else None
-        if rgb is None:
-            # Defensive fallback – create a dummy black image
+        # Denormalize: pixel = (normalized * std + mean) * 255
+        if spatial is not None:
+            mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+            std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+            spatial_np = spatial.cpu().numpy()
+            unnorm = (spatial_np * std + mean) * 255.0
+            rgb = np.clip(unnorm, 0, 255).transpose(1, 2, 0).astype(np.uint8)
+        else:
             rgb = np.zeros((512, 512, 3), dtype=np.uint8)
 
         # ---- New lightweight descriptors ----
