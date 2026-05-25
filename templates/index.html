@@ -494,12 +494,15 @@
             content: '';
             position: absolute;
             width: 100%;
-            height: 3px;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
+            height: 100%;
             top: 0;
             left: 0;
+            border-bottom: 3px solid var(--accent);
+            box-shadow: 0 2px 8px var(--accent);
+            transform: translateY(-100%);
             animation: scanline 2.5s ease-in-out infinite;
+            will-change: transform;
+            pointer-events: none;
         }
 
         /* 9 Metric Grid Breakdown */
@@ -570,8 +573,11 @@
         .metric-fill {
             height: 100%;
             border-radius: 2px;
-            width: 0%;
-            transition: width 1s cubic-bezier(0.1, 0.8, 0.2, 1);
+            width: 100%;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 1s cubic-bezier(0.1, 0.8, 0.2, 1);
+            will-change: transform;
         }
 
         /* Tooltip style */
@@ -770,15 +776,162 @@
         }
 
         @keyframes scanline {
-            0% { top: 0%; }
-            50% { top: 100%; }
-            100% { top: 0%; }
+            0% { transform: translateY(-100%); }
+            50% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
         }
 
         @keyframes pulse-glow {
             0% { opacity: 0.6; text-shadow: 0 0 10px rgba(0, 255, 170, 0.2); }
             50% { opacity: 1; text-shadow: 0 0 20px rgba(0, 255, 170, 0.6); }
             100% { opacity: 0.6; text-shadow: 0 0 10px rgba(0, 255, 170, 0.2); }
+        }
+
+        /* Mobile responsive optimizations and layout styling */
+        @media (max-width: 768px) {
+            header {
+                padding: 12px 16px;
+                backdrop-filter: none !important;
+                background: rgba(3, 3, 3, 0.95);
+            }
+            .logo-section {
+                font-size: 1.1rem;
+                gap: 8px;
+            }
+            .logo-badge {
+                font-size: 0.6rem;
+                padding: 2px 6px;
+            }
+            .nav-actions {
+                gap: 10px;
+            }
+            .user-pill {
+                padding: 4px 10px;
+                font-size: 0.8rem;
+                gap: 6px;
+            }
+            .admin-link {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+                gap: 6px;
+            }
+            main {
+                margin: 15px auto;
+                padding: 0 12px;
+                gap: 15px;
+            }
+            .dashboard-grid {
+                gap: 15px;
+            }
+            .glass-panel {
+                padding: 15px;
+                backdrop-filter: none !important;
+                background: rgba(10, 10, 10, 0.95);
+                gap: 15px;
+            }
+            .drop-zone {
+                padding: 30px 15px;
+                gap: 10px;
+            }
+            .drop-zone i {
+                font-size: 2.5rem;
+            }
+            .preview-container {
+                aspect-ratio: 4/3;
+            }
+            .preview-actions {
+                bottom: 12px;
+                left: 12px;
+                right: 12px;
+                gap: 8px;
+            }
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.85rem;
+            }
+            .scan-overlay {
+                padding: 20px 10px;
+                gap: 20px;
+                backdrop-filter: none !important;
+                background: rgba(3, 3, 3, 0.98);
+            }
+            .scan-visualizer {
+                width: 100px;
+                height: 100px;
+            }
+            .scan-visualizer i {
+                font-size: 2.2rem;
+            }
+            .pipeline-steps {
+                max-width: 100%;
+                gap: 8px;
+            }
+            .step-item {
+                font-size: 0.75rem;
+            }
+            .results-container {
+                gap: 15px;
+            }
+            .verdict-banner {
+                padding: 15px;
+            }
+            .verdict-info h4 {
+                font-size: 1.15rem;
+            }
+            .verdict-percentage {
+                font-size: 1.8rem;
+            }
+            .images-comparison {
+                gap: 10px;
+            }
+            .metrics-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .metric-card {
+                padding: 12px;
+                gap: 6px;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .tooltip {
+                width: 200px;
+                margin-left: -100px;
+                font-size: 0.7rem;
+                padding: 8px 10px;
+            }
+            .modal-content {
+                padding: 20px;
+                gap: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .verdict-banner {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            .verdict-percentage {
+                align-self: flex-end;
+            }
+            .nav-actions {
+                #header-username {
+                    display: none;
+                }
+            }
+            .user-pill {
+                padding: 6px;
+                border-radius: 50%;
+            }
+            .user-pill i {
+                margin: 0;
+            }
+        }
+
+        /* Active styling for mobile tap tooltips */
+        .metric-card.active-tooltip .tooltip {
+            visibility: visible;
+            opacity: 1;
         }
     </style>
 </head>
@@ -1109,6 +1262,11 @@
             resultsEmpty.style.display = 'none';
             resultsContainer.style.display = 'none';
 
+            // Reset metric progress fills to scaleX(0)
+            document.querySelectorAll('.metric-fill').forEach(bar => {
+                bar.style.transform = 'scaleX(0)';
+            });
+
             // Simulate the processing pipeline step-by-step
             const steps = [
                 { id: 'step-0', duration: 800 },
@@ -1216,9 +1374,9 @@
                 const elBar = document.getElementById('bar-' + id);
                 elVal.textContent = val;
 
-                // Scale value to a readable percentage width
-                let percent = Math.min(100, Math.max(0, (val / max) * 100 * scale));
-                elBar.style.width = percent + '%';
+                // Scale value to a fraction for scaleX transition
+                let fraction = Math.min(1, Math.max(0, (val / max) * scale));
+                elBar.style.transform = `scaleX(${fraction})`;
                 
                 // Color coding: red if fake (extreme), green if organic
                 if (isFake) {
@@ -1323,7 +1481,27 @@
         }
 
         // Init
-        document.addEventListener('DOMContentLoaded', loadProfile);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProfile();
+            
+            // Set up mobile tooltip toggles on metric card clicks
+            document.querySelectorAll('.metric-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const wasActive = card.classList.contains('active-tooltip');
+                    // Clear all tooltips first
+                    document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active-tooltip'));
+                    if (!wasActive) {
+                        card.classList.add('active-tooltip');
+                    }
+                    e.stopPropagation();
+                });
+            });
+            
+            // Clicking anywhere else closes active tooltips
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active-tooltip'));
+            });
+        });
     </script>
 </body>
 </html>
