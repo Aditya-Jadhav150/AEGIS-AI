@@ -121,6 +121,7 @@ try:
     print("🧬  Sub-network extractors successfully mounted on GPU/CPU.")
 except Exception as e:
     print(f"❌  ERROR during pipeline initialization: {e}")
+    raise e
 
 # ----- Forensic Helper Functions -----
 def high_freq_energy(freq_tensor: torch.Tensor) -> float:
