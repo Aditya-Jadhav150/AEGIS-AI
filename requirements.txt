@@ -80,3 +80,4 @@ xgboost
 scikit-image
 pandas
 diffusers
+accelerate
