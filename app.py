@@ -30,7 +30,7 @@ from core.diffusion_latent import DiffusionErrorLoop
 from core.statistical_extraction import StatisticalFeatureExtractor
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'deepfake-detection-super-secret-key-2026'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'deepfake-detection-super-secret-key-2026')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 
 # Simple memory cache for rate limiting IPs (tracks failed attempts only)
@@ -479,6 +479,10 @@ def api_predict():
     if file.filename == '':
         return jsonify({"success": False, "message": "No file selected."}), 400
     if file:
+        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+        if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
+            return jsonify({"success": False, "message": "Invalid file type. Only images (.png, .jpg, .jpeg, .webp) are allowed."}), 400
+
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
