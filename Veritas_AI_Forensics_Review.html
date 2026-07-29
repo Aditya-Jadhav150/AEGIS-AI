@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veritas-AI | Interactive Forensic Core Walkthrough</title>
+    
+    <!-- Professional Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #030303;
+            --bg-panel: #0a0a0a;
+            --bg-glass: rgba(13, 13, 13, 0.75);
+            --border-glow: rgba(255, 255, 255, 0.05);
+            --border-active: #00ffaa;
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --accent: #00ffaa;
+            --accent-glow: rgba(0, 255, 170, 0.2);
+            --danger: #ff3366;
+            --danger-glow: rgba(255, 51, 102, 0.2);
+            --warning: #ffcc00;
+            --white-glow: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 255, 170, 0.03), transparent 35%),
+                radial-gradient(circle at 90% 80%, rgba(255, 51, 102, 0.03), transparent 35%),
+                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01), transparent 50%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top navigation header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(25px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .brand i {
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent-glow);
+            animation: pulse-glow 3s infinite;
+        }
+
+        .brand-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding-left: 15px;
+        }
+
+        .header-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .meta-tag {
+            background: rgba(0, 255, 170, 0.05);
+            border: 1px solid rgba(0, 255, 170, 0.15);
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .meta-tag.red {
+            background: rgba(255, 51, 102, 0.05);
+            border: 1px solid rgba(255, 51, 102, 0.15);
+            color: var(--danger);
+        }
+
+        /* Container Layout */
+        .container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            max-width: 1600px;
+            width: 100%;
+            margin: 0 auto;
+            min-height: calc(100vh - 81px);
+        }
+
+        /* Sidebar Navigation */
+        aside {
+            background: rgba(5, 5, 5, 0.5);
+            border-right: 1px solid rgba(255, 255, 255, 0.02);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-header {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin: 15px 0 8px 10px;
+            font-weight: 700;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+            cursor: pointer;
+            background: none;
+            text-align: left;
+            width: 100%;
+        }
+
+        .nav-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav-btn.active {
+            color: var(--accent);
+            background: rgba(0, 255, 170, 0.03);
+            border-color: rgba(0, 255, 170, 0.1);
+            text-shadow: 0 0 10px rgba(0, 255, 170, 0.1);
+        }
+
+        .nav-btn i {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content Viewport */
+        main {
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .section-view {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .section-view.active {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* Reusable Card Components */
+        .glass-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255,255,255,0.08);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-title i {
+            color: var(--accent);
+        }
+
+        /* System Architecture SVG & Flow Diagram */
+        .architecture-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .arch-svg {
+            width: 100%;
+            max-width: 960px;
+            height: auto;
+        }
+
+        /* SVG styles */
+        .arch-node {
+            fill: #0d0d0d;
+            stroke: rgba(255,255,255,0.08);
+            stroke-width: 1.5;
+            transition: all 0.3s;
+        }
+        .arch-node:hover {
+            stroke: var(--accent);
+            fill: #121212;
+            filter: drop-shadow(0px 0px 8px rgba(0, 255, 170, 0.2));
+        }
+        .arch-node.active-pipe {
+            stroke: var(--accent);
+            fill: rgba(0, 255, 170, 0.02);
+        }
+        .arch-node.v2-pipe {
+            stroke: var(--danger);
+            fill: rgba(255, 51, 102, 0.02);
+        }
+        .arch-node.v2-pipe:hover {
+            stroke: var(--danger);
+            fill: #121212;
+            filter: drop-shadow(0px 0px 8px rgba(255, 51, 102, 0.2));
+        }
+        .arch-text {
+            fill: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            pointer-events: none;
+        }
+        .arch-subtext {
+            fill: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+            font-size: 10px;
+            pointer-events: none;
+        }
+        .arch-line {
+            fill: none;
+            stroke: rgba(255,255,255,0.1);
+            stroke-width: 1.5;
+            stroke-dasharray: 4,4;
+            animation: dash 30s linear infinite;
+        }
+        .arch-line.active {
+            stroke: var(--accent);
+            stroke-dasharray: 8,4;
+        }
+        .arch-line.v2 {
+            stroke: var(--danger);
+            stroke-dasharray: 8,4;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+
+        /* Pipelines Grid comparison */
+        .pipeline-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .pipeline-card {
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 24px;
+            background: rgba(255,255,255,0.01);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+
+        .pipeline-card.active-prod {
+            border-color: rgba(0, 255, 170, 0.15);
+            background: linear-gradient(180deg, rgba(0, 255, 170, 0.01), transparent);
+        }
+
+        .pipeline-card.active-v2 {
+            border-color: rgba(255, 51, 102, 0.15);
+            background: linear-gradient(180deg, rgba(255, 51, 102, 0.01), transparent);
+        }
+
+        .pipeline-badge {
+            align-self: flex-start;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pipeline-badge.green {
+            background: rgba(0, 255, 170, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(0, 255, 170, 0.2);
+        }
+
+        .pipeline-badge.red {
+            background: rgba(255, 51, 102, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 51, 102, 0.2);
+        }
+
+        .pipeline-badge.silver {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pipeline-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .pipeline-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.85rem;
+        }
+
+        .pipeline-list li {
+            display: flex;
+            gap: 10px;
+            color: var(--text-muted);
+        }
+
+        .pipeline-list li i {
+            color: var(--text-main);
+            margin-top: 3px;
+        }
+
+        .pipeline-list li strong {
+            color: var(--text-main);
+        }
+
+        /* Interactive Forensic Playground */
+        .playground-layout {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            gap: 30px;
+        }
+
+        .slider-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .slider-card {
+            background: rgba(255,255,255,0.01);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slider-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slider-value {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .slider-control {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.05);
+            outline: none;
+            border-radius: 2px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider-control::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: transform 0.1s;
+        }
+
+        .slider-control::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Dynamic result screen in sandbox */
+        .sandbox-display {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            position: sticky;
+            top: 100px;
+        }
+
+        .ring-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+
+        .ring-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .ring-track {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.02);
+            stroke-width: 12;
+        }
+
+        .ring-fill {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-dasharray: 565;
+            stroke-dashoffset: 565;
+            transition: stroke-dashoffset 0.5s ease-out, stroke 0.5s;
+        }
+
+        .ring-center {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .ring-percent {
+            font-size: 2.8rem;
+            font-weight: 800;
+        }
+
+        .ring-percent span {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .ring-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-top: -5px;
+        }
+
+        .verdict-badge {
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+
+        .verdict-badge.real {
+            background: rgba(0, 255, 170, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(0, 255, 170, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.05);
+        }
+
+        .verdict-badge.fake {
+            background: rgba(255, 51, 102, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(255, 51, 102, 0.2);
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.05);
+        }
+
+        /* Code Viewer Section */
+        .code-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 25px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.02);
+            overflow: hidden;
+            height: 600px;
+        }
+
+        .code-list {
+            border-right: 1px solid rgba(255,255,255,0.03);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(3, 3, 3, 0.2);
+        }
+
+        .code-file-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            background: none;
+            text-align: left;
+        }
+
+        .code-file-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.01);
+        }
+
+        .code-file-btn.active {
+            color: var(--accent);
+            background: rgba(0, 255, 170, 0.02);
+            border-color: rgba(0, 255, 170, 0.08);
+        }
+
+        .code-view {
+            padding: 20px;
+            overflow: auto;
+            background: #050505;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #d4d4d4;
+            white-space: pre;
+        }
+
+        /* Metadata & Documentation grids */
+        .doc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        .doc-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            padding-bottom: 15px;
+        }
+
+        .doc-item:last-child {
+            border-bottom: none;
+        }
+
+        .doc-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .doc-val {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Math and implementation metrics info cards */
+        .metrics-catalog {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .catalog-card {
+            background: rgba(255,255,255,0.01);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .catalog-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .catalog-icon {
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+
+        .catalog-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .catalog-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        /* Key Metrics modal details */
+        .detail-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(15px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .detail-content {
+            background: var(--bg-panel);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-width: 700px;
+            width: 100%;
+            border-radius: 16px;
+            padding: 35px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            animation: modalSlide 0.3s cubic-bezier(0.1, 0.8, 0.2, 1);
+        }
+
+        .btn-modal-close {
+            position: absolute;
+            top: 25px; right: 25px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .btn-modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-formula {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-align: center;
+        }
+
+        /* CSS code highlights styling */
+        .keyword { color: #569cd6; }
+        .function { color: #dcdcaa; }
+        .string { color: #ce9178; }
+        .comment { color: #6a9955; }
+        .number { color: #b5cea8; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes modalSlide {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes pulse-glow {
+            0% { text-shadow: 0 0 10px rgba(0, 255, 170, 0.2); }
+            50% { text-shadow: 0 0 20px rgba(0, 255, 170, 0.5); }
+            100% { text-shadow: 0 0 10px rgba(0, 255, 170, 0.2); }
+        }
+
+        /* Responsive Layouts */
+        @media (max-width: 1100px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            aside {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 15px;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.02);
+            }
+            .nav-header {
+                display: none;
+            }
+            .nav-btn {
+                white-space: nowrap;
+                padding: 10px 15px;
+            }
+            .playground-layout {
+                grid-template-columns: 1fr;
+            }
+            .pipeline-grid {
+                grid-template-columns: 1fr;
+            }
+            .metrics-catalog {
+                grid-template-columns: 1fr;
+            }
+            .code-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .code-list {
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.03);
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            .code-file-btn {
+                white-space: nowrap;
+            }
+            .code-view {
+                max-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <i class="fa-solid fa-shield-halved"></i>
+            VERITAS-AI
+            <span class="brand-subtitle">Forensic Core Walkthrough</span>
+        </div>
+        <div class="header-meta">
+            <span class="meta-tag"><i class="fa-solid fa-server"></i> XGBoost Active</span>
+            <span class="meta-tag red"><i class="fa-solid fa-microchip"></i> PyTorch V2 R&D</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar Navigation Menu -->
+        <aside>
+            <div class="nav-header">Architecture</div>
+            <button class="nav-btn active" onclick="switchTab('system-overview')">
+                <i class="fa-solid fa-network-wired"></i> System Overview
+            </button>
+            <button class="nav-btn" onclick="switchTab('pipelines')">
+                <i class="fa-solid fa-layer-group"></i> ML Pipelines
+            </button>
+            
+            <div class="nav-header">Metrics & Sandbox</div>
+            <button class="nav-btn" onclick="switchTab('forensic-metrics')">
+                <i class="fa-solid fa-fingerprint"></i> 9 Biometric Metrics
+            </button>
+            <button class="nav-btn" onclick="switchTab('sandbox')">
+                <i class="fa-solid fa-sliders"></i> Metric Simulator
+            </button>
+            
+            <div class="nav-header">Codebase & Details</div>
+            <button class="nav-btn" onclick="switchTab('code-viewer')">
+                <i class="fa-solid fa-code"></i> Source Code Viewer
+            </button>
+            <button class="nav-btn" onclick="switchTab('security-deployment')">
+                <i class="fa-solid fa-lock"></i> Security & Deployment
+            </button>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main>
+            
+            <!-- SECTION 1: System Overview -->
+            <section id="system-overview" class="section-view active">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fa-solid fa-microscope"></i> High-Level Forensic Architecture
+                        </div>
+                    </div>
+                    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 25px;">
+                        Veritas-AI (also referenced in codebase as Aegis-AI) is an enterprise-grade biometric analysis framework built for forensic investigators. The system aligns faces via <strong>MTCNN Aligner</strong> modules and pipes spatial features, reconstruction residuals, and frequency magnitudes through ML classifiers to distinguish between real camera-sensor captures and AI-generated fabrications.
+                    </p>
+                    
+                    <div class="architecture-wrapper">
+                        <!-- Custom Interactive SVG Flow Diagram -->
+                        <svg class="arch-svg" viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 2 L 10 5 L 0 8 z" fill="rgba(255,255,255,0.2)" />
+                                </marker>
+                                <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 2 L 10 5 L 0 8 z" fill="#00ffaa" />
+                                </marker>
+                                <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 2 L 10 5 L 0 8 z" fill="#ff3366" />
+                                </marker>
+                            </defs>
+                            
+                            <!-- Lines & Paths -->
+                            <path class="arch-line" d="M 120 160 L 190 160" marker-end="url(#arrow)" />
+                            
+                            <!-- Aligner to Pipeline A -->
+                            <path class="arch-line active" d="M 290 140 Q 320 80 400 80" marker-end="url(#arrow-green)" />
+                            <!-- Aligner to Pipeline B -->
+                            <path class="arch-line v2" d="M 290 180 Q 320 240 400 240" marker-end="url(#arrow-red)" />
+                            
+                            <!-- Pipeline A to Decision -->
+                            <path class="arch-line active" d="M 520 80 Q 600 80 630 140" marker-end="url(#arrow-green)" />
+                            <!-- Pipeline B to Decision -->
+                            <path class="arch-line v2" d="M 520 240 Q 600 240 630 180" marker-end="url(#arrow-red)" />
+                            
+                            <!-- Decision to Output -->
+                            <path class="arch-line" d="M 710 160 L 760 160" marker-end="url(#arrow)" />
+                            
+                            <!-- Nodes -->
+                            <!-- User Upload -->
+                            <rect class="arch-node" x="20" y="120" width="100" height="80" rx="8" />
+                            <text class="arch-text" x="70" y="155" text-anchor="middle">Operator Input</text>
+                            <text class="arch-subtext" x="70" y="175" text-anchor="middle">Image Vector Upload</text>
+                            
+                            <!-- MTCNN Aligner -->
+                            <rect class="arch-node" x="190" y="120" width="100" height="80" rx="8" />
+                            <text class="arch-text" x="240" y="150" text-anchor="middle">MTCNN Aligner</text>
+                            <text class="arch-subtext" x="240" y="168" text-anchor="middle">5 landmarks rotation</text>
+                            <text class="arch-subtext" x="240" y="180" text-anchor="middle">512x512 crop</text>
+                            
+                            <!-- Pipeline A: XGBoost Production -->
+                            <rect class="arch-node active-pipe" x="400" y="40" width="120" height="80" rx="8" />
+                            <text class="arch-text" x="460" y="70" text-anchor="middle" style="fill:#00ffaa; font-weight:700;">Pipeline A (Prod)</text>
+                            <text class="arch-subtext" x="460" y="90" text-anchor="middle">9 Forensic Metrics</text>
+                            <text class="arch-subtext" x="460" y="102" text-anchor="middle">XGBoost Classify</text>
+                            
+                            <!-- Pipeline B: R&D PyTorch Cross Attention -->
+                            <rect class="arch-node v2-pipe" x="400" y="200" width="120" height="80" rx="8" />
+                            <text class="arch-text" x="460" y="230" text-anchor="middle" style="fill:#ff3366; font-weight:700;">Pipeline B (R&D)</text>
+                            <text class="arch-subtext" x="460" y="250" text-anchor="middle">Swin-T + ResNet18 FFT</text>
+                            <text class="arch-subtext" x="460" y="262" text-anchor="middle">Cross-Attention Fusion</text>
+                            
+                            <!-- Decision fusion head -->
+                            <rect class="arch-node" x="610" y="120" width="100" height="80" rx="8" />
+                            <text class="arch-text" x="660" y="155" text-anchor="middle">Decomposition</text>
+                            <text class="arch-subtext" x="660" y="175" text-anchor="middle">Decision Bounds</text>
+                            
+                            <!-- Final Output -->
+                            <circle cx="770" cy="160" r="15" fill="#0d0d0d" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
+                            <text class="arch-text" x="770" y="164" text-anchor="middle" style="font-size:10px;">UI</text>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Technology Specs Grid -->
+                <div class="doc-grid">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <div class="card-title"><i class="fa-solid fa-server"></i> System Core Specs</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Server Framework</div>
+                            <div class="doc-val">Flask (Python 3.11-slim runtime environment)</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Database Management</div>
+                            <div class="doc-val">SQLAlchemy SQLite core schema (users & analytics database)</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Vision Preprocessor</div>
+                            <div class="doc-val">facenet-pytorch MTCNN aligned boundary landmark extraction</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Primary ML classifier</div>
+                            <div class="doc-val">XGBoost Decision Tree Classifier (200 trees, depth 4 limits)</div>
+                        </div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <div class="card-title"><i class="fa-solid fa-shield-halved"></i> Security & Integration</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Session Gatekeeping</div>
+                            <div class="doc-val">Failed login rate limiting (lockout IP for 5 hours after 5 invalid attempts)</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Identity Management</div>
+                            <div class="doc-val">Google Identity SSO (JWT verified natively on backend)</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Operator Integrity</div>
+                            <div class="doc-val">Username change strict cooldown (limited to once every 7 days)</div>
+                        </div>
+                        <div class="doc-item">
+                            <div class="doc-label">Hosting Sandbox</div>
+                            <div class="doc-val">Docker SDK mapped to Hugging Face Spaces with proxy fix cookies</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SECTION 2: Pipelines comparative breakdown -->
+            <section id="pipelines" class="section-view">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-sliders"></i> Pipeline Architectures Comparison</div>
+                    </div>
+                    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 25px;">
+                        The Veritas-AI system separates logic into three distinct pipelines to handle production inference speed constraints, legacy weighting checks, and deep learning research models:
+                    </p>
+                    
+                    <div class="pipeline-grid">
+                        
+                        <!-- Pipeline A -->
+                        <div class="pipeline-card active-prod">
+                            <span class="pipeline-badge green">Active Production</span>
+                            <div class="pipeline-title">Pipeline A: XGBoost</div>
+                            <ul class="pipeline-list">
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Philosophy:</strong> Optimized real-time inference without running heavy neural networks on every request.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Model Structure:</strong> 9 Scalar biometric metrics are derived from the crop and classification is handled by gradient-boosted decision trees.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Model Files:</strong> <code>fusion_engine_best.json</code> (Trees) and <code>scaler.json</code> (Standardizer).</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Latency:</strong> Fast (&lt; 150ms post face detection).</div>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Pipeline B -->
+                        <div class="pipeline-card active-v2">
+                            <span class="pipeline-badge red">R&D Deep Neural</span>
+                            <div class="pipeline-title">Pipeline B: V2 Multi-Modal</div>
+                            <ul class="pipeline-list">
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Philosophy:</strong> Heavy neural transformer model mapping multiple domains.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Structural Pillars:</strong> Spatial (Swin-T), Frequency (ResNet-18 FFT), Latent (Auto-encoder reconstruction error mapping), and Statistical (LBP multi-layer perceptron).</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Fusion strategy:</strong> 8-Head Multi-Head Cross-Attention using Spatial features as Query.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Loss Formulation:</strong> Compound Binary Cross Entropy + Supervised Contrastive Loss.</div>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Pipeline C -->
+                        <div class="pipeline-card">
+                            <span class="pipeline-badge silver">Legacy Ensemble</span>
+                            <div class="pipeline-title">Pipeline C: Heuristic Weight</div>
+                            <ul class="pipeline-list">
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Philosophy:</strong> Traditional weighted combination of models.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Combination method:</strong> Weighted aggregation across static classifiers: EfficientNet-B3, external APIs, and manual FFT features.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Static weights:</strong> 40% External API, 40% custom classifier model, 10% FFT energy, 10% structural entropy.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-check"></i>
+                                    <div><strong>Status:</strong> Deprecated in favor of Pipeline A.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: 9 Forensic Metrics Catalog -->
+            <section id="forensic-metrics" class="section-view">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-fingerprint"></i> Biometric forensic indicators (Production Core)</div>
+                    </div>
+                    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 25px;">
+                        Pipeline A calculates 9 numeric scores to evaluate different pixel and metadata boundaries. Click on any metric card to review its extraction pipeline logic, mathematical formula, and target synthetic artifacts:
+                    </p>
+                    
+                    <div class="metrics-catalog">
+                        <div class="catalog-card" onclick="openDetail('spatial')">
+                            <div class="catalog-icon"><i class="fa-solid fa-border-all"></i></div>
+                            <div class="catalog-name">1. Spatial Edge Score</div>
+                            <div class="catalog-desc">Detects high-frequency anomalies and alignment crop boundary defects.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('freq')">
+                            <div class="catalog-icon"><i class="fa-solid fa-wave-square"></i></div>
+                            <div class="catalog-name">2. FFT Spectrum Energy</div>
+                            <div class="catalog-desc">Identifies high-frequency checkerboard grid anomalies typical of GAN generators.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('latent')">
+                            <div class="catalog-icon"><i class="fa-solid fa-bullseye"></i></div>
+                            <div class="catalog-name">3. VAE Latent Residual</div>
+                            <div class="catalog-desc">Measures Stable Diffusion manifold reconstruction discrepancies.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('stat')">
+                            <div class="catalog-icon"><i class="fa-solid fa-dna"></i></div>
+                            <div class="catalog-name">4. LBP Texture Metric</div>
+                            <div class="catalog-desc">Computes microscopic skin smoothing and micro-realistic anomalies.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('entropy')">
+                            <div class="catalog-icon"><i class="fa-solid fa-chart-area"></i></div>
+                            <div class="catalog-name">5. Shannon Entropy</div>
+                            <div class="catalog-desc">Identifies flattened information distributions indicative of AI rendering.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('edges')">
+                            <div class="catalog-icon"><i class="fa-solid fa-hashtag"></i></div>
+                            <div class="catalog-name">6. Canny Edge Density</div>
+                            <div class="catalog-desc">Tracks artificial contrast halos and unnatural blending boundaries.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('laplacian')">
+                            <div class="catalog-icon"><i class="fa-solid fa-image"></i></div>
+                            <div class="catalog-name">7. Laplacian Focus Var</div>
+                            <div class="catalog-desc">Exposes camera-sensor focus anomalies and unnatural blurring.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('kurtosis')">
+                            <div class="catalog-icon"><i class="fa-solid fa-palette"></i></div>
+                            <div class="catalog-name">8. Color Kurtosis</div>
+                            <div class="catalog-desc">Measures unnatural channels shifts and inorganic color distribution patterns.</div>
+                        </div>
+                        <div class="catalog-card" onclick="openDetail('jpeg')">
+                            <div class="catalog-icon"><i class="fa-solid fa-compress"></i></div>
+                            <div class="catalog-name">9. JPEG DCT Variance</div>
+                            <div class="catalog-desc">Identifies double-compression anomalies from splicing and image manipulation.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 4: Interactive Metrics Simulator Playground -->
+            <section id="sandbox" class="section-view">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-sliders"></i> Metric Simulation Sandbox</div>
+                    </div>
+                    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 25px;">
+                        Adjust the sliders below to simulate metric outputs. The script runs a normalized logistic regression proxy representing the XGBoost decision boundary to update confidence percentages and verdict outputs:
+                    </p>
+                    
+                    <div class="playground-layout">
+                        <!-- Sliders column -->
+                        <div class="slider-grid">
+                            
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-border-all"></i> Spatial Edge Crop</span>
+                                    <span class="slider-value" id="val-spatial">0.50</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-spatial" min="0.1" max="2.0" step="0.05" value="0.5" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-wave-square"></i> FFT Spectrum Energy</span>
+                                    <span class="slider-value" id="val-freq">1.2B</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-freq" min="100000000" max="5000000000" step="50000000" value="1200000000" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-bullseye"></i> VAE Latent Residual</span>
+                                    <span class="slider-value" id="val-latent">0.45</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-latent" min="0.05" max="1.5" step="0.02" value="0.45" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-dna"></i> LBP Texture Metric</span>
+                                    <span class="slider-value" id="val-stat">0.12</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-stat" min="0.01" max="0.25" step="0.005" value="0.12" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-chart-area"></i> Shannon Entropy</span>
+                                    <span class="slider-value" id="val-entropy">7.20</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-entropy" min="4.0" max="8.0" step="0.05" value="7.2" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-hashtag"></i> Canny Edge Density</span>
+                                    <span class="slider-value" id="val-edges">0.18</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-edges" min="0.02" max="0.5" step="0.01" value="0.18" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-image"></i> Laplacian Focus Var</span>
+                                    <span class="slider-value" id="val-laplacian">8200</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-laplacian" min="200" max="20000" step="200" value="8200" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-palette"></i> Color Kurtosis</span>
+                                    <span class="slider-value" id="val-kurtosis">0.85</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-kurtosis" min="0.05" max="3.0" step="0.05" value="0.85" oninput="updateSimulation()">
+                            </div>
+
+                            <div class="slider-card">
+                                <div class="slider-meta">
+                                    <span class="slider-label"><i class="fa-solid fa-compress"></i> JPEG DCT Variance</span>
+                                    <span class="slider-value" id="val-jpeg">1250</span>
+                                </div>
+                                <input type="range" class="slider-control" id="control-jpeg" min="100" max="4000" step="50" value="1250" oninput="updateSimulation()">
+                            </div>
+                        </div>
+
+                        <!-- Interactive gauge display column -->
+                        <div>
+                            <div class="sandbox-display">
+                                <div class="ring-container">
+                                    <svg class="ring-svg">
+                                        <circle class="ring-track" cx="100" cy="100" r="90" />
+                                        <circle class="ring-fill" id="sandbox-fill" cx="100" cy="100" r="90" />
+                                    </svg>
+                                    <div class="ring-center">
+                                        <div class="ring-percent" id="sim-percent">50<span>%</span></div>
+                                        <div class="ring-label">AI Confidence</div>
+                                    </div>
+                                </div>
+
+                                <div class="verdict-badge real" id="sim-verdict-badge">Verdict: Organic Core</div>
+                                
+                                <div style="width: 100%; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 20px;">
+                                    <h4 style="font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem; margin-bottom: 8px;">Telemetry Explanation</h4>
+                                    <p id="sim-explanation" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; text-align: center;">
+                                        All features fall within normal camera-sensor boundaries. The sample behaves as an organic capture.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 5: Codebase source viewer -->
+            <section id="code-viewer" class="section-view">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-code"></i> Source Code Library</div>
+                    </div>
+                    <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 25px;">
+                        Navigate through the critical system components to review raw class declarations, model layers, and configuration properties:
+                    </p>
+                    
+                    <div class="code-container">
+                        <div class="code-list">
+                            <button class="code-file-btn active" onclick="loadCode('app')">app.py (Main Routing)</button>
+                            <button class="code-file-btn" onclick="loadCode('v2')">v2_architecture.py (R&D Model)</button>
+                            <button class="code-file-btn" onclick="loadCode('alignment')">alignment.py (MTCNN Aligner)</button>
+                            <button class="code-file-btn" onclick="loadCode('latent')">diffusion_latent.py (VAE Loop)</button>
+                            <button class="code-file-btn" onclick="loadCode('stat')">statistical_extraction.py (LBP Core)</button>
+                            <button class="code-file-btn" onclick="loadCode('docker')">Dockerfile (HF Deploy)</button>
+                        </div>
+                        <div class="code-view" id="code-display">Select a file from the sidebar list.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 6: Security & Deployment specs -->
+            <section id="security-deployment" class="section-view">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-lock"></i> Security & Deployment Configuration</div>
+                    </div>
+                    
+                    <div class="doc-grid">
+                        <div>
+                            <h3 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.15rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-shield-halved" style="color: var(--accent);"></i> Gateway Security Framework
+                            </h3>
+                            <ul class="pipeline-list" style="font-size: 0.9rem;">
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--accent);"></i>
+                                    <div><strong>Login Lockout Gate:</strong> Limits failed authentication entries. Tracks IPs in-memory; 5 bad attempts will lock out the IP address for 5 hours.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--accent);"></i>
+                                    <div><strong>SSO Verification:</strong> Google JWT integration checks tokens natively on backend through the <code>google.oauth2.id_token.verify_oauth2_token</code> workflow.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--accent);"></i>
+                                    <div><strong>Username Cool-down:</strong> Changes are capped at 1 change per 7-day period to prevent active identifier masking.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--accent);"></i>
+                                    <div><strong>Admin Gatekeeping:</strong> User database views and deletions are restricted strictly to account email address <code>adityajadhav300405@gmail.com</code>.</div>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h3 style="font-family: 'Space Grotesk', sans-serif; font-size: 1.15rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-cloud-arrow-up" style="color: var(--danger);"></i> Hugging Face Spaces & Docker Mappings
+                            </h3>
+                            <ul class="pipeline-list" style="font-size: 0.9rem;">
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--danger);"></i>
+                                    <div><strong>ProxyFix Configuration:</strong>Mounter sets <code>ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)</code> ensuring cookie parameters like <code>Secure=True</code> execute behind HF's SSL proxies.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--danger);"></i>
+                                    <div><strong>SameSite Cookies:</strong> Handles cross-origin frame cookies. Modifies cookie headers to <code>SameSite=None</code> and <code>Secure=True</code> inside active user contexts.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--danger);"></i>
+                                    <div><strong>Folder permissions:</strong> Pre-creates directories <code>static/uploads</code> and database storage path <code>instance</code> and runs <code>chmod -R 777</code> to bypass HF variables UID constraints.</div>
+                                </li>
+                                <li>
+                                    <i class="fa-solid fa-circle-check" style="color: var(--danger);"></i>
+                                    <div><strong>CPU Core Fallback:</strong> Configures Torch locks (<code>--index-url https://download.pytorch.org/whl/cpu</code>) to bypass standard GPU sandbox limitations on free tiers.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Forensic Metric Details Modal -->
+    <div class="detail-modal" id="metric-detail-modal">
+        <div class="detail-content">
+            <button class="btn-modal-close" onclick="closeDetail()"><i class="fa-solid fa-xmark"></i></button>
+            <h3 id="modal-title" style="font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem;">Metric Details</h3>
+            
+            <div class="modal-formula" id="modal-formula">Formula</div>
+            
+            <div>
+                <h4 style="font-size: 0.95rem; margin-bottom: 5px;">Forensic Target</h4>
+                <p id="modal-target" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;"></p>
+            </div>
+            
+            <div>
+                <h4 style="font-size: 0.95rem; margin-bottom: 5px;">Implementation Execution Code</h4>
+                <pre id="modal-code" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 15px; color: #d4d4d4; overflow-x: auto; white-space: pre-wrap; max-height: 250px;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Script Library -->
+    <script>
+        // Tab switching logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.section-view').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabId).classList.add('active');
+            
+            // Find button matching tabId action
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('onclick').includes(tabId)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Trigger sandbox recalculation if tab opened
+            if (tabId === 'sandbox') {
+                updateSimulation();
+            }
+        }
+
+        // Metrics Catalog database
+        const metricsDb = {
+            spatial: {
+                title: "1. Spatial Edge Score",
+                formula: "spatial_score = mean(|aligned_tensor|)",
+                target: "Tracks anomalies in basic pixel contrast, abnormal borders, jawline discontinuity, or facial splicing halos. When images are synthesized or elements are pasted in, high-frequency spatial gradients often leave structural residuals.",
+                code: `<span class="comment"># Extract spatial anomaly index directly on aligned tensor</span>\nspatial_score = float(torch.mean(torch.abs(aligned)).item())`
+            },
+            freq: {
+                title: "2. FFT Spectrum Energy",
+                formula: "freq_score = Sum( |FFT(Img)_shifted|[outer_25%_margins] )",
+                target: "Tracks high-frequency checkboard pattern footprints. Standard generative models (GANs and Diffusion frameworks) use upsampling or deconvolution layers that introduce mathematical grid inconsistencies in the frequency spectrum domain.",
+                code: `<span class="comment"># Convert to Grayscale, apply 2D FFT, shift coordinates</span>\ngray = 0.2989*aligned[0] + 0.587*aligned[1] + 0.114*aligned[2]\nfreq_complex = torch.fft.fft2(gray.unsqueeze(0))\nfreq_shifted = torch.fft.fftshift(torch.abs(freq_complex))\nfreq_tensor = torch.log(1 + freq_shifted)\n\n<span class="comment"># Mask coordinates and integrate high frequency bounds energy</span>\nfreq_score = high_freq_energy(freq_tensor)`
+            },
+            latent: {
+                title: "3. VAE Latent Residual",
+                formula: "latent_score = mean(|I_input - VAE_decoder(VAE_encoder(I_input))|)",
+                target: "Calculates the difference between the input image and its reconstruction via a Tiny Auto-Encoder for Stable Diffusion (TAESD). Because synthetic face images conform closely to VAE manifolds, their reconstruction error is significantly lower than real high-frequency human skin features.",
+                code: `<span class="comment"># Encode image crop to latent space, add noise, decode</span>\nlatent_err = error_loop(aligned.unsqueeze(0))\nlatent_score = float(torch.mean(torch.abs(latent_err)).item())`
+            },
+            stat: {
+                title: "4. LBP Texture Metric",
+                formula: "stat_score = mean( LBP(Img) )",
+                target: "Computes Local Binary Patterns (LBP) to map facial micro-textures. AI-generated images often lack authentic skin pores or organic hair configurations, resulting in smoothed texture outputs compared to genuine photos.",
+                code: `<span class="comment"># Extract statistical binary pattern descriptor maps on GPU</span>\nstat_tensor = stat_extractor(aligned.unsqueeze(0)).cpu()\nstat_score = float(torch.mean(stat_tensor).item())`
+            },
+            entropy: {
+                title: "5. Shannon Entropy",
+                formula: "entropy = -Sum( p(x) * log2(p(x)) )",
+                target: "Calculates Shannon Information Entropy on the face crop to measure pixel complexity. Deepfakes frequently contain smoothed texture surfaces or gradients with low entropy values.",
+                code: `<span class="comment"># Calculate Shannon Entropy on Grayscale</span>\ngray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)\nentropy_score = float(shannon_entropy(gray))`
+            },
+            edges: {
+                title: "6. Canny Edge Density",
+                formula: "edge_density = Count(Canny_Edges) / Total_Pixels",
+                target: "Measures edge density using a Canny filter (thresholds 100, 200). Helps pinpoint artificial outlines, blurring boundaries, or synthetic face integration seams.",
+                code: `<span class="comment"># Apply Canny Edge Detector</span>\ngray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)\nedges = cv2.Canny(gray, 100, 200)\nedge_density_score = float(np.sum(edges > 0) / edges.size)`
+            },
+            laplacian: {
+                title: "7. Laplacian Focus Variance",
+                formula: "laplacian_variance = Var( Laplacian(Img) )",
+                target: "Exposes image blurriness and focal mismatches. Generative images typically present focus inconsistencies across facial features.",
+                code: `<span class="comment"># Calculate Laplacian Variance</span>\ngray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)\nlap = cv2.Laplacian(gray, cv2.CV_64F)\nlaplacian_var_score = float(lap.var())`
+            },
+            kurtosis: {
+                title: "8. Color Channel Kurtosis",
+                formula: "color_kurtosis = mean( Kurtosis(R) + Kurtosis(G) + Kurtosis(B) )",
+                target: "Examines the color distribution kurtosis across RGB channels. Synthetic skin rendering lacks organic color variance, displaying abnormal channel peaks.",
+                code: `<span class="comment"># Compute Kurtosis averages across RGB channels</span>\nks = [kurtosis(img_rgb[..., c].ravel()) for c in range(3)]\ncolor_kurtosis_score = float(np.mean(ks))`
+            },
+            jpeg: {
+                title: "9. JPEG DCT Variance",
+                formula: "jpeg_consistency = Var( DCT(Img)[mask_low_freq] )",
+                target: "Exposes double-compression footprints by computing a 2D discrete cosine transform (DCT), masking out the 8x8 low-frequency components, and analyzing the variance of remaining high frequencies.",
+                code: `<span class="comment"># Apply Discrete Cosine Transform on crop and mask out low frequencies</span>\ngray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)\ndct_full = cv2.dct(gray)\nmask = np.ones_like(dct_full, dtype=bool)\nmask[:8, :8] = False\njpeg_consistency_score = float(np.var(dct_full[mask]))`
+            }
+        };
+
+        // Modal triggers
+        function openDetail(key) {
+            const data = metricsDb[key];
+            document.getElementById('modal-title').textContent = data.title;
+            document.getElementById('modal-formula').innerHTML = data.formula;
+            document.getElementById('modal-target').textContent = data.target;
+            document.getElementById('modal-code').innerHTML = data.code;
+            
+            document.getElementById('metric-detail-modal').style.display = 'flex';
+        }
+
+        function closeDetail() {
+            document.getElementById('metric-detail-modal').style.display = 'none';
+        }
+
+        // Close modal clicking background
+        window.onclick = function(e) {
+            const m = document.getElementById('metric-detail-modal');
+            if (e.target === m) {
+                closeDetail();
+            }
+        }
+
+        // Sandbox simulator calculation logic
+        function updateSimulation() {
+            // Read inputs
+            const spatial = parseFloat(document.getElementById('control-spatial').value);
+            const freq = parseFloat(document.getElementById('control-freq').value);
+            const latent = parseFloat(document.getElementById('control-latent').value);
+            const stat = parseFloat(document.getElementById('control-stat').value);
+            const entropy = parseFloat(document.getElementById('control-entropy').value);
+            const edges = parseFloat(document.getElementById('control-edges').value);
+            const laplacian = parseFloat(document.getElementById('control-laplacian').value);
+            const kurtosisVal = parseFloat(document.getElementById('control-kurtosis').value);
+            const jpeg = parseFloat(document.getElementById('control-jpeg').value);
+
+            // Update UI Labels
+            document.getElementById('val-spatial').textContent = spatial.toFixed(2);
+            document.getElementById('val-freq').textContent = (freq / 1000000000).toFixed(2) + 'B';
+            document.getElementById('val-latent').textContent = latent.toFixed(2);
+            document.getElementById('val-stat').textContent = stat.toFixed(3);
+            document.getElementById('val-entropy').textContent = entropy.toFixed(2);
+            document.getElementById('val-edges').textContent = edges.toFixed(2);
+            document.getElementById('val-laplacian').textContent = Math.round(laplacian);
+            document.getElementById('val-kurtosis').textContent = kurtosisVal.toFixed(2);
+            document.getElementById('val-jpeg').textContent = Math.round(jpeg);
+
+            // Run mock classification (weights approximate forensic manifold statistics)
+            // Normalizations:
+            // spatial: 0.1 to 2.0 (mean ~ 0.8) -> + positive weight
+            // freq: 100M to 5B (mean ~ 1.5B) -> + positive weight
+            // latent: 0.05 to 1.5 (mean ~ 0.4) -> - negative weight (synthetics reconstruct VAE with low error)
+            // stat: 0.01 to 0.25 (mean ~ 0.1) -> - negative weight (smooth texture is synthetic, real has high local LBP variation)
+            // entropy: 4.0 to 8.0 (mean ~ 7.5) -> - negative weight (synthetic is smoother, lower entropy)
+            // edges: 0.02 to 0.5 (mean ~ 0.15) -> + positive weight (contrasts, seams)
+            // laplacian: 200 to 20000 (mean ~ 8000) -> - negative weight (blurry/smoothed synthetic lacks camera focal variance)
+            // kurtosisVal: 0.05 to 3.0 (mean ~ 1.0) -> + positive weight
+            // jpeg: 100 to 4000 (mean ~ 1500) -> + positive weight (compression anomalies)
+
+            let score = 0;
+            
+            // Linear combination calculations
+            score += ((spatial - 0.8) / 0.5) * 1.5;
+            score += ((freq - 1500000000) / 1000000000) * 2.2;
+            score -= ((latent - 0.4) / 0.3) * 3.0; // VAE error is a very strong feature
+            score -= ((stat - 0.12) / 0.05) * 1.8;
+            score -= ((entropy - 7.4) / 0.8) * 1.5;
+            score += ((edges - 0.16) / 0.1) * 1.2;
+            score -= ((laplacian - 8000) / 4000) * 1.6;
+            score += ((kurtosisVal - 1.0) / 0.6) * 1.0;
+            score += ((jpeg - 1500) / 1000) * 1.4;
+
+            // Shift intercept bias to represent dataset balance
+            score += 0.2;
+
+            // Run sigmoid function
+            const probability = 1 / (1 + Math.exp(-score));
+            const pct = Math.round(probability * 100);
+
+            // Render gauge indicators
+            document.getElementById('sim-percent').innerHTML = `${pct}<span>%</span>`;
+            
+            const circleFill = document.getElementById('sandbox-fill');
+            // Stroke dasharray perimeter length: 2 * PI * r = 2 * 3.14159 * 90 = 565.48
+            const offset = 565 - (565 * probability);
+            circleFill.style.strokeDashoffset = offset;
+
+            const badge = document.getElementById('sim-verdict-badge');
+            const exp = document.getElementById('sim-explanation');
+
+            if (pct >= 50) {
+                circleFill.style.stroke = 'var(--danger)';
+                badge.className = 'verdict-badge fake';
+                badge.textContent = `Verdict: AI Generated (${pct}%)`;
+                
+                let reasons = [];
+                if (latent < 0.3) reasons.push("abnormally low VAE reconstruction errors (matching model manifolds)");
+                if (freq > 2000000000) reasons.push("extreme high-frequency spectrum spikes typical of GAN checkerboards");
+                if (entropy < 7.0) reasons.push("flattened texture Shannon entropy values (unnatural smoothing)");
+                
+                exp.innerHTML = `Biometric scan matches synthetic generation bounds. Detected anomalies: ${reasons.length ? reasons.join(', ') : 'microscopic LBP / focal anomalies'}.`;
+            } else {
+                circleFill.style.stroke = 'var(--accent)';
+                badge.className = 'verdict-badge real';
+                badge.textContent = `Verdict: Organic Core (${100 - pct}%)`;
+                exp.innerHTML = "Telemetry values confirm organic capture parameters. Pixel details align with camera-sensor focus profiles and authentic texture maps.";
+            }
+        }
+
+        // Mock source code database
+        const codeFiles = {
+            app: `<span class="keyword">import</span> os\n<span class="keyword">import</span> cv2\n<span class="keyword">import</span> torch\n<span class="keyword">from</span> flask <span class="keyword">import</span> Flask, jsonify, request\n<span class="keyword">from</span> xgboost <span class="keyword">import</span> XGBClassifier\n\n<span class="comment"># Load production fusion models</span>\nfusion_model = XGBClassifier()\nfusion_model.load_model(<span class="string">'dataset/fusion_engine_best.json'</span>)\n\n<span class="keyword">def</span> <span class="function">predict_image</span>(image_path):\n    bgr = cv2.imread(image_path)\n    \n    <span class="comment"># 1. Align & Crop Face using MTCNN aligner</span>\n    aligned = aligner.align_and_crop(bgr, return_tensor=<span class="keyword">True</span>)\n    \n    <span class="comment"># 2. Extract production features</span>\n    features = {\n        <span class="string">"spatial_score"</span>: torch.mean(torch.abs(aligned)).item(),\n        <span class="string">"freq_score"</span>: high_freq_energy(freq_tensor),\n        <span class="string">"latent_score"</span>: torch.mean(torch.abs(error_loop(aligned))),\n        <span class="string">"stat_score"</span>: torch.mean(stat_extractor(aligned)),\n        <span class="string">"entropy"</span>: compute_entropy(aligned_rgb),\n        <span class="string">"edge_density"</span>: compute_edge_density(aligned_rgb),\n        <span class="string">"laplacian_variance"</span>: compute_laplacian_variance(aligned_rgb),\n        <span class="string">"color_kurtosis"</span>: compute_color_kurtosis(aligned_rgb),\n        <span class="string">"jpeg_consistency"</span>: compute_jpeg_consistency(aligned_rgb)\n    }\n    \n    <span class="comment"># 3. Standardize and classify</span>\n    df_scaled = scaler.transform([features])\n    prob_fake = fusion_model.predict_proba(df_scaled)[<span class="number">0</span>, <span class="number">1</span>]\n    \n    <span class="keyword">return</span> {\n        <span class="string">"prediction"</span>: <span class="string">"FAKE"</span> <span class="keyword">if</span> prob_fake &gt;= <span class="number">0.5</span> <span class="keyword">else</span> <span class="string">"REAL"</span>,\n        <span class="string">"confidence"</span>: prob_fake * <span class="number">100</span>\n    }`,
+
+            v2: `<span class="keyword">class</span> <span class="function">MultiModalDeepfakeSystemV2</span>(nn.Module):\n    <span class="comment"># Advanced R&D Multi-Modal Pipeline V2</span>\n    <span class="keyword">def</span> <span class="function">__init__</span>(self):\n        super().__init__()\n        self.spatial_branch = SpatialDomainBranch()  <span class="comment"># Swin-T</span>\n        self.freq_branch = FrequencyDomainBranch()    <span class="comment"># ResNet18 (FFT Input)</span>\n        self.latent_branch = LatentFingerprintBranch()<span class="comment"># 3-Layer VAE Error CNN</span>\n        self.stat_branch = StatisticalRealismBranch()<span class="comment"># LBP MLP</span>\n        self.fusion_head = CrossAttentionFusion()      <span class="comment"># 8-Head Cross-Attention</span>\n\n    <span class="keyword">def</span> <span class="function">forward</span>(self, spatial, freq, latent, stat):\n        f_spatial = self.spatial_branch(spatial)\n        f_freq = self.freq_branch(freq)\n        f_latent = self.latent_branch(latent)\n        f_stat = self.stat_branch(stat)\n        \n        <span class="comment"># cross-attention weights Alternate Domains using Spatial as Query</span>\n        logits = self.fusion_head(f_spatial, f_freq, f_latent, f_stat)\n        <span class="keyword">return</span> logits`,
+
+            alignment: `<span class="keyword">class</span> <span class="function">GeometricAligner</span>:\n    <span class="comment"># Locks 5 facial landmarks using MTCNN</span>\n    <span class="keyword">def</span> <span class="function">__init__</span>(self, device):\n        self.mtcnn = MTCNN(keep_all=<span class="keyword">False</span>, post_process=<span class="keyword">False</span>, device=device)\n\n    <span class="keyword">def</span> <span class="function">align_and_crop</span>(self, img_bgr):\n        faces, landmarks = self.mtcnn.detect(img_bgr, landmarks=<span class="keyword">True</span>)\n        <span class="keyword">if</span> landmarks <span class="keyword">is</span> <span class="keyword">None</span>: <span class="keyword">return</span> <span class="keyword">None</span>\n        \n        <span class="comment"># Compute rotation angle to level eyes horizontally</span>\n        left_eye, right_eye = landmarks[<span class="number">0</span>][<span class="number">0</span>], landmarks[<span class="number">0</span>][<span class="number">1</span>]\n        dy = right_eye[<span class="number">1</span>] - left_eye[<span class="number">1</span>]\n        dx = right_eye[<span class="number">0</span>] - left_eye[<span class="number">0</span>]\n        angle = math.degrees(math.atan2(dy, dx))\n        \n        <span class="comment"># Apply affine transform matrix and crop 512x512 with 10% padding bounds</span>\n        rot_matrix = cv2.getRotationMatrix2D(center, angle, scale)\n        warped = cv2.warpAffine(img_bgr, rot_matrix, (w, h))\n        <span class="keyword">return</span> warped`,
+
+            latent: `<span class="keyword">class</span> <span class="function">DiffusionErrorLoop</span>:\n    <span class="comment"># Evaluates VAE reconstruction manifolds</span>\n    <span class="keyword">def</span> <span class="function">__init__</span>(self, device):\n        <span class="comment"># Load Tiny VAE (Stable Diffusion decoder)</span>\n        self.vae = AutoencoderTiny.from_pretrained(<span class="string">"madebyollin/taesd"</span>).to(device)\n\n    <span class="keyword">def</span> <span class="function">forward</span>(self, x):\n        with torch.no_grad():\n            <span class="comment"># Encode image to latent vectors</span>\n            latents = self.vae.encode(x)\n            <span class="comment"># Reconstruct back to pixel spaces</span>\n            reconstructed = self.vae.decode(latents)\n            <span class="comment"># Compute residual map discrepancy</span>\n            error_map = torch.abs(x - reconstructed)\n        <span class="keyword">return</span> error_map`,
+
+            stat: `<span class="keyword">class</span> <span class="function">StatisticalFeatureExtractor</span>(nn.Module):\n    <span class="comment"># Extract spatial binary texture properties</span>\n    <span class="keyword">def</span> <span class="function">__init__</span>(self):\n        super().__init__()\n        self.laplacian_conv = nn.Conv2d(<span class="number">1</span>, <span class="number">1</span>, kernel_size=<span class="number">3</span>, padding=<span class="number">1</span>, bias=<span class="keyword">False</span>)\n        self.laplacian_conv.weight = nn.Parameter(torch.tensor([[<span class="number">0.</span>,<span class="number">1.</span>,<span class="number">0.</span>],[<span class="number">1.</span>,-<span class="number">4.</span>,<span class="number">1.</span>],[<span class="number">0.</span>,<span class="number">1.</span>,<span class="number">0.</span>]]).view(<span class="number">1</span>,<span class="number">1</span>,<span class="number">3</span>,<span class="number">3</span>))\n\n    <span class="keyword">def</span> <span class="function">forward</span>(self, x):\n        <span class="comment"># Calculate Laplacian convolutions edge mapping</span>\n        edge_map = self.laplacian_conv(x)\n        <span class="comment"># Downsample to a dense vector via adaptive pools</span>\n        features = F.adaptive_avg_pool2d(edge_map, (<span class="number">16</span>, <span class="number">16</span>))\n        <span class="keyword">return</span> features.view(features.size(<span class="number">0</span>), -1)`,
+
+            docker: `<span class="comment"># Hugging Face Spaces optimized Docker image</span>\n<span class="keyword">FROM</span> python:3.11-slim\n\n<span class="keyword">RUN</span> apt-get update && apt-get install -y libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*\n\n<span class="keyword">WORKDIR</span> /app\n<span class="comment"># Pre-create writable storage coordinates to bypass UID constraints</span>\n<span class="keyword">RUN</span> mkdir -p static/uploads instance && chmod -R 777 static/uploads instance\n\n<span class="keyword">COPY</span> . /app\n\n<span class="comment"># Inject CPU fallback architectures targets</span>\n<span class="keyword">RUN</span> pip install --no-cache-dir torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cpu\n<span class="keyword">RUN</span> pip install --no-cache-dir -r requirements.txt\n\n<span class="keyword">EXPOSE</span> 7860\n<span class="keyword">CMD</span> [<span class="string">"gunicorn"</span>, <span class="string">"-b"</span>, <span class="string">"0.0.0.0:7860"</span>, <span class="string">"--workers=2"</span>, <span class="string">"--timeout=120"</span>, <span class="string">"app:app"</span>]`
+        };
+
+        function loadCode(key) {
+            document.querySelectorAll('.code-file-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Find specific button clicking state
+            const targetBtn = Array.from(document.querySelectorAll('.code-file-btn')).find(btn => {
+                return btn.getAttribute('onclick').includes(key);
+            });
+            if (targetBtn) targetBtn.classList.add('active');
+
+            document.getElementById('code-display').innerHTML = codeFiles[key];
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCode('app');
+            updateSimulation();
+        });
+    </script>
+</body>
+</html>

@@ -1,18 +1,19 @@
----
-title: AEGIS AI
-emoji: 🛡️
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
-license: mit
----
+# Veritas-AI (Aegis-AI) - DeepFake Detection System
 
-# Veritas-AI: Technical Architecture & System Documentation
+**Mini Project · Dept. of Information Technology**  
+**MVSR Engineering College, Hyderabad** (VI SEM · Section C · AY 2026 · Batch C9)
 
 This document serves as the absolute, single source of truth for the **Veritas-AI** (internally branded as **Aegis-AI**) forensic platform. It outlines the core system design, the three distinct processing pipelines, biometric feature extraction details, user security frameworks, Hugging Face Spaces Docker SDK configurations, and UI/UX design components.
 
-* **Live Production URL:** The system is hosted live and accessible at: **https://aditya150-veritas-ai.hf.space/**
+* **Live Production URL:** [https://aditya150-veritas-ai.hf.space/](https://aditya150-veritas-ai.hf.space/)
+* **Contact:** 245123737184@mvsrec.edu.in
+
+### Team
+* **Surya Pranavam** (2451-23-737-136)
+* **Sai Pranavam** (2451-23-737-142)
+* **Aditya Jadhav** (2451-23-737-184)
+
+**Guide:** Mrs. K. Sri Laxmi (Asst. Professor, Dept. of IT)
 
 ---
 
@@ -286,3 +287,11 @@ Verify the status of a specific image using the command-line client:
 python predict_fusion.py --image path/to/target.jpg
 ```
 This will print a formatted, high-contrast text terminal report showing the 9-metric analysis scores, final classification verdict, and confidence levels.
+
+---
+
+## 9. Presentation & Documentation
+
+The repository also contains materials for project presentations:
+* **`Veritas_AI_Presentation.pptx`**: A cinematic, 20-slide PowerPoint presentation explaining the problem, methodology, and results.
+* **`Veritas_AI_Presentation_Guide.docx`**: A detailed, slide-by-slide word document explaining the visual layout, exact text, and technical engineering concepts to help presenters prepare.

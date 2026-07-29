@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AEGIS-AI | Forensic Core</title>
@@ -8,17 +9,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #030303;
-            --bg-panel: #0a0a0a;
-            --bg-glass: rgba(13, 13, 13, 0.7);
-            --border-glow: rgba(255, 255, 255, 0.05);
-            --border-active: #00ffaa;
+            --bg-dark: #050509;
+            --bg-panel: rgba(18, 18, 24, 0.65);
+            --bg-glass: rgba(18, 18, 24, 0.85);
+            --border-glow: rgba(0, 240, 255, 0.15);
+            --border-active: #00F0FF;
             --text-main: #f0f0f0;
             --text-muted: #888888;
-            --accent: #00ffaa;
-            --accent-glow: rgba(0, 255, 170, 0.2);
-            --danger: #ff3366;
-            --danger-glow: rgba(255, 51, 102, 0.2);
+            --accent: #00F0FF;
+            --accent-glow: rgba(0, 240, 255, 0.4);
+            --danger: #FF2A55;
+            --danger-glow: rgba(255, 42, 85, 0.4);
             --warning: #ffcc00;
         }
 
@@ -30,6 +31,8 @@
 
         body {
             background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%), radial-gradient(circle at 85% 30%, rgba(0, 255, 136, 0.05), transparent 25%);
+            background-attachment: fixed;
             color: var(--text-main);
             font-family: 'Outfit', sans-serif;
             background-image: 
@@ -90,6 +93,8 @@
 
         .user-pill {
             background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-glow);
             padding: 6px 14px;
             border-radius: 20px;
@@ -148,6 +153,8 @@
         /* Dashboard panels */
         .glass-panel {
             background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-glow);
             border-radius: 16px;
             padding: 30px;
@@ -264,6 +271,7 @@
         }
 
         .btn-primary {
+            box-shadow: 0 4px 15px var(--accent-glow);
             background: var(--accent);
             color: #000;
             border: none;
@@ -973,7 +981,7 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     <h3>Upload Media Vector</h3>
                     <p>Drag and drop image or click to navigate directories</p>
-                    <input type="file" id="file-input" style="display: none;" accept="image/*">
+                    <input type="file" id="file-input" style="display: none;" accept="image/*,video/*">
                 </div>
 
                 <!-- Preview Box -->
@@ -1029,11 +1037,12 @@
                     <!-- Crops comparison -->
                     <div class="images-comparison">
                         <div class="img-box">
-                            <img id="result-img-orig" src="" alt="Uploaded original">
+                            <img id="result-img-orig" src="" alt="Uploaded original" style="display: none;">
+                            <video id="result-video-orig" src="" autoplay loop muted playsinline style="display: none; width: 100%; border-radius: 8px; border: 1px solid var(--border-glow); box-shadow: 0 0 20px var(--accent-glow);"></video>
                             <div class="img-box-label">Original Input</div>
                         </div>
                         <div class="img-box scan-line-active" id="aligned-box">
-                            <img id="result-img-aligned" src="" alt="Aligned Face">
+                            <img id="result-img-aligned" src="" alt="Aligned Face" style="display: none;">
                             <div class="img-box-label">Aligned Crop</div>
                         </div>
                     </div>
@@ -1191,6 +1200,7 @@
         const resultsContainer = document.getElementById('results-container');
         const resultsEmpty = document.getElementById('results-empty');
         const resultImgOrig = document.getElementById('result-img-orig');
+        const resultVideoOrig = document.getElementById('result-video-orig');
         const resultImgAligned = document.getElementById('result-img-aligned');
         const alignedBox = document.getElementById('aligned-box');
         
@@ -1228,8 +1238,8 @@
         });
 
         function handleSelectedFile(file) {
-            if (!file.type.startsWith('image/')) {
-                alert('Uploaded vector must be an image.');
+            if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                alert('Uploaded vector must be an image or video.');
                 return;
             }
             selectedFile = file;
@@ -1320,11 +1330,23 @@
             formData.append('file', selectedFile);
 
             try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
                 const response = await fetch('/api/predict', {
                     method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
                     body: formData
                 });
-                const data = await response.json();
+
+                // Safe JSON parse — if server returns HTML error page, show status instead of cryptic JS error
+                let data;
+                const rawText = await response.text();
+                try {
+                    data = JSON.parse(rawText);
+                } catch (_) {
+                    alert(`Server error (HTTP ${response.status}). Check that the server is running correctly.`);
+                    resetAnalyzer();
+                    return;
+                }
 
                 if (data.success) {
                     // Let the visual completion step play for a second
@@ -1333,11 +1355,11 @@
                         renderForensicReport(data);
                     }, 1200);
                 } else {
-                    alert('Decomposition failure: ' + data.message);
+                    alert('Decomposition failure: ' + (data.message || data.error || 'Unknown error'));
                     resetAnalyzer();
                 }
             } catch (error) {
-                alert('Network failure reaching forensic backend node.');
+                alert(error.message || 'Network failure reaching forensic backend node.');
                 resetAnalyzer();
             }
         });
@@ -1351,9 +1373,19 @@
                 resultsContainer.classList.add('visible');
             }, 50);
 
-            // Populate images
-            resultImgOrig.src = data.image_url;
-            resultImgAligned.src = data.aligned_url || data.image_url;
+            // Populate media
+            if (data.is_video) {
+                resultImgOrig.style.display = 'none';
+                resultVideoOrig.style.display = 'block';
+                resultVideoOrig.src = data.image_url;
+                resultImgAligned.style.display = 'none';
+            } else {
+                resultVideoOrig.style.display = 'none';
+                resultImgOrig.style.display = 'block';
+                resultImgOrig.src = data.image_url;
+                resultImgAligned.style.display = 'block';
+                resultImgAligned.src = data.aligned_url || data.image_url;
+            }
 
             // Aligned crop scan animation toggle
             if (data.aligned_url) {
@@ -1365,19 +1397,42 @@
             // Populate verdict banner
             const isFake = data.prediction === 'FAKE';
             verdictBanner.className = 'verdict-banner ' + (isFake ? 'fake' : 'real');
-            verdictTitle.textContent = isFake ? 'Verdict: AI Generated' : 'Verdict: Real Image';
-            verdictDescription.textContent = isFake 
-                ? 'Decomposition scan identifies high-confidence markers of synthetic rendering / deepfake.' 
-                : 'Microscopic texture analysis confirms organic, camera-sensor origins.';
+
+            // Contextual title based on media type and method
+            let verdictTitleText, verdictDescText;
+            if (data.is_video) {
+                verdictTitleText = isFake ? 'Verdict: AI Generated Video' : 'Verdict: Real Video';
+                verdictDescText = isFake
+                    ? 'Temporal frame analysis identifies high-confidence markers of video deepfake manipulation.'
+                    : 'Frame-by-frame forensic scan confirms temporal consistency consistent with organic footage.';
+            } else if (data.method === 'general_vit_detector') {
+                verdictTitleText = isFake ? 'Verdict: AI Generated Image' : 'Verdict: Real Image';
+                verdictDescText = isFake
+                    ? 'General AI image detector (no face found) identifies AI-synthesis artefacts.'
+                    : 'General AI image analysis finds no synthetic generation markers.';
+            } else {
+                verdictTitleText = isFake ? 'Verdict: AI Generated' : 'Verdict: Real Image';
+                verdictDescText = isFake
+                    ? 'Decomposition scan identifies high-confidence markers of synthetic rendering / deepfake.'
+                    : 'Microscopic texture analysis confirms organic, camera-sensor origins.';
+            }
+            verdictTitle.textContent = verdictTitleText;
+            verdictDescription.textContent = verdictDescText;
             verdictPercentage.innerHTML = `${Math.round(data.confidence)}<span>%</span>`;
 
-            // Populate 9 Metrics progress values & bar widths
-            const f = data.features;
+            // If there's a note from backend, show it
+            if (data.note) {
+                verdictDescription.textContent += ' [' + data.note + ']';
+            }
+
+            // Populate forensic metrics (safe with defaults if keys are missing)
+            const f = data.features || {};
             
             // Helper to normalise and set metrics
             function setMetric(id, val, max, scale = 1) {
                 const elVal = document.getElementById('val-' + id);
                 const elBar = document.getElementById('bar-' + id);
+                if (!elVal || !elBar || val === undefined || val === null) return;
                 elVal.textContent = val;
 
                 // Scale value to a fraction for scaleX transition
@@ -1400,7 +1455,7 @@
             setMetric('entropy', f.entropy, 8.0);
             setMetric('edges', f.edge_density, 0.5);
             setMetric('laplacian', f.laplacian_variance, 20000);
-            setMetric('kurtosis', Math.abs(f.color_kurtosis), 3.0);
+            setMetric('kurtosis', Math.abs(f.color_kurtosis || 0), 3.0);
             setMetric('jpeg', f.jpeg_consistency, 4000);
         }
 
@@ -1452,7 +1507,7 @@
                 if (newUsername !== currentSyncedUsername) {
                     const uRes = await fetch('/api/update_username', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                         body: JSON.stringify({ new_username: newUsername })
                     });
                     const uData = await uRes.json();
@@ -1468,7 +1523,7 @@
                 // Save OptIn
                 const oRes = await fetch('/api/update_optin', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                     body: JSON.stringify({ ai_data_optin: optIn })
                 });
                 

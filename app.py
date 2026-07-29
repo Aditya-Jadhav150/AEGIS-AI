@@ -1,5 +1,8 @@
 import warnings
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import re
 import cv2
 import numpy as np
@@ -7,8 +10,6 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import joblib
-from skimage.measure import shannon_entropy
-from scipy.stats import kurtosis
 from sklearn.preprocessing import StandardScaler
 from PIL import Image, ImageOps
 from flask import Flask, render_template, request, jsonify, redirect, url_for
@@ -17,24 +18,47 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
-from facenet_pytorch import MTCNN
 from datetime import datetime, timedelta
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from collections import defaultdict
 import time
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 
-# Core components for the Fusion Engine
+# Core components
 from core.alignment import GeometricAligner
 from core.diffusion_latent import DiffusionErrorLoop
 from core.statistical_extraction import StatisticalFeatureExtractor
+from core.metrics import ForensicMetricExtractor
+from core.metadata_forensics import MetadataForensicsEngine
+from core.video_pipeline import VideoPipeline
+from core.deepfake_detector import DeepfakeDetector
+
+# Primary deepfake detector (lazy-loaded on first prediction)
+deepfake_detector = DeepfakeDetector(device='cpu')
+# Video pipeline (uses Haar cascade + ViT internally)
+video_pipeline = VideoPipeline(device='cpu')
+# Metadata forensics engine
+metadata_engine = MetadataForensicsEngine()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'deepfake-detection-super-secret-key-2026')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+if not app.config['SECRET_KEY']:
+    raise RuntimeError("SECRET_KEY environment variable not set.")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 
-# Simple memory cache for rate limiting IPs (tracks failed attempts only)
-failed_logins = defaultdict(list)
+# Flask-WTF CSRF Protection
+csrf = CSRFProtect(app)
+
+# Flask-Limiter setup
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
 
@@ -62,6 +86,7 @@ class User(UserMixin, db.Model):
     google_id = db.Column(db.String(150), unique=True, nullable=True)
     last_username_change = db.Column(db.DateTime, nullable=True)
     ai_data_optin = db.Column(db.Boolean, default=False, nullable=True)
+    is_admin = db.Column(db.Boolean, default=False, nullable=True)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -72,6 +97,7 @@ with app.app_context():
     try:
         from sqlalchemy import text
         db.session.execute(text('ALTER TABLE user ADD COLUMN ai_data_optin BOOLEAN DEFAULT 0'))
+        db.session.execute(text('ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0'))
         db.session.commit()
     except Exception:
         pass
@@ -90,6 +116,7 @@ fusion_scaler = None
 aligner = None
 error_loop = None
 stat_extractor = None
+metric_extractor = None
 
 try:
     model_path = os.path.join('dataset', 'fusion_engine_best.json')
@@ -111,151 +138,92 @@ try:
         fusion_scaler.scale_ = np.array(s_data["scale"])
         fusion_scaler.n_features_in_ = s_data["n_features_in"]
         
-        print("🗄️  XGBoost Fusion Model and Scaler loaded from plain-text JSON successfully.")
+        print("XGBoost Fusion Model and Scaler loaded from plain-text JSON successfully.")
     else:
-        print("⚠️  Warning: Model/Scaler JSON files not found. Please train first.")
+        print("Warning: Model/Scaler JSON files not found. Please train first.")
         
     aligner = GeometricAligner(device=device)
     error_loop = DiffusionErrorLoop(device=device)
     stat_extractor = StatisticalFeatureExtractor()
-    print("🧬  Sub-network extractors successfully mounted on GPU/CPU.")
+    metric_extractor = ForensicMetricExtractor(device=device)
+    print("Sub-network extractors successfully mounted on GPU/CPU.")
 except Exception as e:
-    print(f"❌  ERROR during pipeline initialization: {e}")
+    print(f"ERROR during pipeline initialization: {e}")
     raise e
 
-# ----- Forensic Helper Functions -----
-def high_freq_energy(freq_tensor: torch.Tensor) -> float:
-    freq = freq_tensor.squeeze().cpu()
-    h, w = freq.shape
-    mask = torch.zeros_like(freq, dtype=torch.bool)
-    margin_h = h // 4
-    margin_w = w // 4
-    mask[:margin_h, :] = True
-    mask[-margin_h:, :] = True
-    mask[:, :margin_w] = True
-    mask[:, -margin_w:] = True
-    return float(torch.sum(torch.abs(freq)[mask]))
-
-def compute_entropy(img_rgb):
-    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
-    return float(shannon_entropy(gray))
-
-def compute_edge_density(img_rgb):
-    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
-    edges = cv2.Canny(gray, 100, 200)
-    return float(np.sum(edges > 0) / edges.size)
-
-def compute_laplacian_variance(img_rgb):
-    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
-    lap = cv2.Laplacian(gray, cv2.CV_64F)
-    return float(lap.var())
-
-def compute_color_kurtosis(img_rgb):
-    ks = [kurtosis(img_rgb[..., c].ravel()) for c in range(3)]
-    return float(np.mean(ks))
-
-def compute_jpeg_consistency(img_rgb):
-    gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY).astype(np.float32)
-    dct_full = cv2.dct(gray)
-    mask = np.ones_like(dct_full, dtype=bool)
-    mask[:8, :8] = False
-    return float(np.var(dct_full[mask]))
-
 def predict_image(image_path):
-    if fusion_model is None or fusion_scaler is None:
-        return {"success": False, "error": "XGBoost Fusion Engine not initialized. Re-train the model first."}
-        
+    """
+    Primary image prediction pipeline.
+    
+    1. Run the ViT deepfake detector as the primary verdict engine.
+    2. In parallel, run RetinaFace alignment + 9 forensic metrics for dashboard.
+    3. If face alignment fails, still return the ViT verdict.
+    """
     try:
         bgr = cv2.imread(image_path)
         if bgr is None:
             return {"success": False, "error": f"Could not read image: {image_path}"}
-            
-        # 1. Align & Crop Face
-        aligned = aligner.align_and_crop(bgr, return_tensor=True)
-        if aligned is None:
-            return {"success": False, "error": "Face detection failed - no face found in the image."}
-            
-        # Save the aligned cropped face to disk to serve it to the frontend
-        filename = os.path.basename(image_path)
-        aligned_filename = "aligned_" + filename
-        aligned_filepath = os.path.join(os.path.dirname(image_path), aligned_filename)
-        
-        # Denormalize cropped face back to clean RGB [0-255]
-        mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
-        std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
-        aligned_np = aligned.cpu().numpy()
-        unnorm = (aligned_np * std + mean) * 255.0
-        aligned_rgb = np.clip(unnorm, 0, 255).transpose(1, 2, 0).astype(np.uint8)
-        
-        # Save BGR to disk for display on website
-        aligned_bgr = cv2.cvtColor(aligned_rgb, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(aligned_filepath, aligned_bgr)
-            
-        # 2. Extract features
-        spatial_score = float(torch.mean(torch.abs(aligned)).item())
-        
-        # Frequency score (exactly matching data_pipeline.py on the normalized aligned tensor)
-        gray_tensor = 0.2989 * aligned[0:1, :, :] + 0.5870 * aligned[1:2, :, :] + 0.1140 * aligned[2:3, :, :]
-        gray_tensor = gray_tensor.unsqueeze(0)  # Shape: [1, 1, 512, 512]
-        freq_complex = torch.fft.fft2(gray_tensor)
-        freq_shifted = torch.fft.fftshift(torch.abs(freq_complex), dim=(-2, -1))
-        freq_tensor = torch.log(1 + freq_shifted)
-        freq_score = high_freq_energy(freq_tensor)
-        
-        # Latent score
-        latent_err = error_loop(aligned.unsqueeze(0))
-        latent_score = float(torch.mean(torch.abs(latent_err)).item())
-        
-        # Statistical score
-        stat_tensor = stat_extractor(aligned.unsqueeze(0)).cpu()
-        stat_score = float(torch.mean(stat_tensor).item())
-        
-        # Conversions and statistics (run on clean unnormalized RGB image)
-        entropy_score = compute_entropy(aligned_rgb)
-        edge_density_score = compute_edge_density(aligned_rgb)
-        laplacian_var_score = compute_laplacian_variance(aligned_rgb)
-        color_kurtosis_score = compute_color_kurtosis(aligned_rgb)
-        jpeg_consistency_score = compute_jpeg_consistency(aligned_rgb)
-        
-        # 3. Assemble features
-        feature_dict = {
-            "spatial_score": spatial_score,
-            "freq_score": freq_score,
-            "latent_score": latent_score,
-            "stat_score": stat_score,
-            "entropy": entropy_score,
-            "edge_density": edge_density_score,
-            "laplacian_variance": laplacian_var_score,
-            "color_kurtosis": color_kurtosis_score,
-            "jpeg_consistency": jpeg_consistency_score,
-        }
-        df_feat = pd.DataFrame([feature_dict])
-        df_scaled = fusion_scaler.transform(df_feat)
-        
-        # 4. Predict
-        prob_fake = float(fusion_model.predict_proba(df_scaled)[0, 1])
-        prediction = "FAKE" if prob_fake >= 0.5 else "REAL"
-        confidence = prob_fake * 100 if prob_fake >= 0.5 else (1 - prob_fake) * 100
-        
-        return {
-            "success": True,
+
+        # ── Primary verdict: ViT deepfake detector ───────────────────────────────
+        primary = deepfake_detector.predict_path(image_path)
+        prediction  = primary["prediction"]
+        fake_prob   = primary["fake_prob"]
+        real_prob   = primary["real_prob"]
+        confidence  = primary["confidence"]
+
+        result = {
+            "success":    True,
             "prediction": prediction,
-            "fake_prob": round(prob_fake * 100, 2),
-            "real_prob": round((1 - prob_fake) * 100, 2),
-            "confidence": round(confidence, 2),
-            "aligned_filename": aligned_filename,
-            "features": {
-                "spatial_score": round(spatial_score, 4),
-                "freq_score": round(freq_score, 2),
-                "latent_score": round(latent_score, 4),
-                "stat_score": round(stat_score, 4),
-                "entropy": round(entropy_score, 4),
-                "edge_density": round(edge_density_score, 4),
-                "laplacian_variance": round(laplacian_var_score, 2),
-                "color_kurtosis": round(color_kurtosis_score, 4),
-                "jpeg_consistency": round(jpeg_consistency_score, 2)
-            }
+            "fake_prob":  fake_prob,
+            "real_prob":  real_prob,
+            "confidence": confidence,
+            "method":     "deepfake_vit",
+            "features":   {},
         }
+
+        # ── Supplementary: Metadata forensics ───────────────────────────────────
+        try:
+            meta = metadata_engine.analyze(image_path)
+            result["features"]["metadata_forensic_score"] = round(
+                meta.get("metadata_forensic_score", 0.5), 4
+            )
+        except Exception:
+            pass
+
+        # ── Supplementary: RetinaFace alignment + forensic metrics ───────────────
+        # (dashboard visualisation only — does NOT affect the verdict)
+        try:
+            aligned = aligner.align_and_crop(bgr, return_tensor=True)
+            if aligned is not None:
+                filename = os.path.basename(image_path)
+                aligned_filename = "aligned_" + filename
+                aligned_filepath = os.path.join(os.path.dirname(image_path), aligned_filename)
+
+                mean_v = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
+                std_v  = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
+                aligned_np  = aligned.cpu().numpy()
+                unnorm      = (aligned_np * std_v + mean_v) * 255.0
+                aligned_rgb = np.clip(unnorm, 0, 255).transpose(1, 2, 0).astype(np.uint8)
+                cv2.imwrite(aligned_filepath, cv2.cvtColor(aligned_rgb, cv2.COLOR_RGB2BGR))
+                result["aligned_filename"] = aligned_filename
+
+                fdict = metric_extractor.extract_all(aligned, aligned_rgb)
+                result["features"].update({
+                    "spatial_score":      round(fdict["spatial_score"], 4),
+                    "freq_score":         round(fdict["freq_score"], 2),
+                    "latent_score":       round(fdict["latent_score"], 4),
+                    "stat_score":         round(fdict["stat_score"], 4),
+                    "entropy":            round(fdict["entropy"], 4),
+                    "edge_density":       round(fdict["edge_density"], 4),
+                    "laplacian_variance": round(fdict["laplacian_variance"], 2),
+                    "color_kurtosis":     round(fdict["color_kurtosis"], 4),
+                    "jpeg_consistency":   round(fdict["jpeg_consistency"], 2),
+                })
+        except Exception:
+            pass  # Forensic metrics are optional — verdict already set
+
+        return result
+
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -263,7 +231,7 @@ def predict_image(image_path):
 @app.route('/aegis-override-system')
 @login_required
 def admin():
-    if not current_user.email or current_user.email.strip().lower() != 'adityajadhav300405@gmail.com':
+    if not getattr(current_user, 'is_admin', False):
         return redirect(url_for('index'))
     return render_template('admin.html', user=current_user)
 
@@ -279,30 +247,16 @@ def login():
     return render_template('login.html')
 
 @app.route('/api/login', methods=['POST'])
+@limiter.limit("5 per 5 hours")
 def api_login():
-    ip = request.remote_addr or request.headers.get('X-Forwarded-For', 'unknown-ip')
-    now = datetime.utcnow()
-    
-    # Prune failures older than 5 hours (18000 seconds)
-    failed_logins[ip] = [t for t in failed_logins[ip] if (now - t).total_seconds() < 18000]
-    
-    if len(failed_logins[ip]) >= 5:
-        return jsonify({"success": False, "message": "CRITICAL: Too many failed attempts. Your device is locked out of logins for 5 hours."}), 429
-
     data = request.json
     user = User.query.filter_by(username=data.get('username')).first()
     # Google users will not have a password hash, explicitly block password login for them if hash is None
     if user and user.password_hash and check_password_hash(user.password_hash, data.get('password')):
         login_user(user, remember=True)
-        # Clear failures on successful login
-        if ip in failed_logins:
-            del failed_logins[ip]
         return jsonify({"success": True})
         
-    # Record the failure
-    failed_logins[ip].append(now)
-    attempts_left = 5 - len(failed_logins[ip])
-    return jsonify({"success": False, "message": f"Invalid username or password. {attempts_left} attempts remaining."}), 401
+    return jsonify({"success": False, "message": "Invalid username or password."}), 401
 
 @app.route('/api/auth/google', methods=['POST'])
 def api_google_login():
@@ -385,7 +339,7 @@ def api_register():
 @app.route('/api/admin/users', methods=['GET'])
 @login_required
 def api_admin_users():
-    if not current_user.email or current_user.email.strip().lower() != 'adityajadhav300405@gmail.com':
+    if not getattr(current_user, 'is_admin', False):
         return jsonify({"success": False, "message": "FORBIDDEN: Admin access only."}), 403
     
     users = User.query.all()
@@ -479,18 +433,48 @@ def api_predict():
     if file.filename == '':
         return jsonify({"success": False, "message": "No file selected."}), 400
     if file:
-        ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
-        if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
-            return jsonify({"success": False, "message": "Invalid file type. Only images (.png, .jpg, .jpeg, .webp) are allowed."}), 400
+        IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+        VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
+        ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
+        
+        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        if ext not in ALLOWED_EXTENSIONS:
+            return jsonify({"success": False, "message": "Invalid file type. Upload images or videos only."}), 400
 
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
-        result = predict_image(filepath)
+        if ext in VIDEO_EXTENSIONS:
+            # Route to Video Pipeline (Haar cascade + ViT deepfake detector)
+            try:
+                vid_result = video_pipeline.process_video(filepath, fps_extraction=1)
+                if not vid_result:
+                    return jsonify({"success": False, "message": "Could not analyse video — no frames could be extracted."}), 400
+
+                result = {
+                    "success":         True,
+                    "prediction":      vid_result["prediction"],
+                    "fake_prob":       vid_result["fake_prob"],
+                    "real_prob":       vid_result["real_prob"],
+                    "confidence":      vid_result["confidence"],
+                    "method":          vid_result.get("method", "video_deepfake_vit"),
+                    "frames_analysed": vid_result.get("frames_analysed", 0),
+                    "faces_found":     vid_result.get("faces_found", 0),
+                    "frame_scores":    vid_result.get("frame_scores", []),
+                    "features":        {},
+                    "image_url":       f"/static/uploads/{filename}",
+                    "is_video":        True,
+                }
+            except Exception as e:
+                return jsonify({"success": False, "message": f"Video processing error: {e}"}), 500
+        else:
+            # Route to Image Pipeline
+            result = predict_image(filepath)
+            
         if result["success"]:
-            # Expose public visual path
-            result["image_url"] = f"/static/uploads/{filename}"
+            if not result.get("image_url"):
+                result["image_url"] = f"/static/uploads/{filename}"
             if "aligned_filename" in result:
                 result["aligned_url"] = f"/static/uploads/{result['aligned_filename']}"
             return jsonify(result)

@@ -1,0 +1,39 @@
+# Virtual environments (local packages)
+workspace/
+venv/
+.venv/
+env/
+pyvenv.cfg
+share/
+
+# Cache directories
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Datasets and raw training files (except production XGBoost configs)
+dataset/*
+!dataset/fusion_engine_best.json
+!dataset/scaler.json
+
+# Local checkpoints and heavy models (R&D V2)
+model.pth
+model_best.pth
+
+# Version control
+.git/
+.gitignore
+
+# Temporary local files & reports
+Miniproject_Sample Report.docx
+test.jpg
+test_debug.py
+allfiles.txt
+scratch/
+.vscode/
+.env
+*.html
+*.docx

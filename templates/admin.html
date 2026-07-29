@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aegis-AI | Security Override</title>
@@ -8,13 +9,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #050505;
-            --bg-panel: #111111;
+            --bg-dark: #050509;
+            --bg-panel: rgba(18, 18, 24, 0.65);
             --border-glow: #333333;
             --text-main: #ffffff;
             --text-muted: #888888;
-            --accent: #00ffaa;
-            --danger: #ff3366;
+            --accent: #00F0FF;
+            --danger: #FF2A55;
             --warning: #ffcc00;
         }
 
@@ -22,6 +23,8 @@
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%), radial-gradient(circle at 85% 30%, rgba(0, 255, 136, 0.05), transparent 25%);
+            background-attachment: fixed;
             color: var(--text-main);
             font-family: 'Inter', sans-serif;
             background-image: 
@@ -488,7 +491,7 @@
             try {
                 const response = await fetch('/api/admin/delete_user', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                     body: JSON.stringify({ user_id: userId, reason: trimmedReason })
                 });
                 const data = await response.json();

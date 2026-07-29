@@ -35,3 +35,14 @@ Thumbs.db
 # Force include model artifacts for HF Space deployment (JSON only)
 !dataset/fusion_engine_best.json
 !dataset/scaler.json
+
+# Temporary scratch files and test scripts
+scratch/
+Test.py
+test.jpg
+allfiles.txt
+~$*.docx
+# Document binaries (excluded from git/HF Spaces)
+*.pdf
+*.pptx
+*.docx

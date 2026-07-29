@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AEGIS-AI | Authentication</title>
@@ -9,17 +10,17 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
-            --bg-dark: #030303;
-            --bg-panel: #0a0a0a;
-            --bg-glass: rgba(13, 13, 13, 0.75);
-            --border-glow: rgba(255, 255, 255, 0.05);
-            --border-active: #00ffaa;
+            --bg-dark: #050509;
+            --bg-panel: rgba(18, 18, 24, 0.65);
+            --bg-glass: rgba(18, 18, 24, 0.85);
+            --border-glow: rgba(0, 240, 255, 0.15);
+            --border-active: #00F0FF;
             --text-main: #f0f0f0;
             --text-muted: #888888;
-            --accent: #00ffaa;
-            --accent-glow: rgba(0, 255, 170, 0.2);
-            --danger: #ff3366;
-            --danger-glow: rgba(255, 51, 102, 0.2);
+            --accent: #00F0FF;
+            --accent-glow: rgba(0, 240, 255, 0.4);
+            --danger: #FF2A55;
+            --danger-glow: rgba(255, 42, 85, 0.4);
         }
 
         * {
@@ -30,6 +31,8 @@
 
         body {
             background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%), radial-gradient(circle at 85% 30%, rgba(0, 255, 136, 0.05), transparent 25%);
+            background-attachment: fixed;
             color: var(--text-main);
             font-family: 'Outfit', sans-serif;
             background-image: 
@@ -111,6 +114,8 @@
 
         .glass-panel {
             background: var(--bg-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-glow);
             border-radius: 16px;
             padding: 40px;
@@ -707,7 +712,7 @@
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                     body: JSON.stringify({ username, password })
                 });
                 
@@ -749,7 +754,7 @@
             try {
                 const res = await fetch("/api/auth/google", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json" , 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content},
                     body: JSON.stringify({ 
                         credential: response.credential, 
                         clientId: response.clientId 
