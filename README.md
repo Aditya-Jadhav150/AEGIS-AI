@@ -1,3 +1,13 @@
+---
+title: Veritas AI
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Veritas-AI (Aegis-AI) - DeepFake Detection System
 
 **Mini Project · Dept. of Information Technology**  
