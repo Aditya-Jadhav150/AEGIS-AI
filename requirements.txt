@@ -82,3 +82,4 @@ scikit-image
 pandas
 diffusers
 accelerate
+python-dotenv
