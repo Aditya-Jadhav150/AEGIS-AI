@@ -43,9 +43,7 @@ video_pipeline = VideoPipeline(device='cpu')
 metadata_engine = MetadataForensicsEngine()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
-if not app.config['SECRET_KEY']:
-    raise RuntimeError("SECRET_KEY environment variable not set.")
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-hf-space-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 
 # Flask-WTF CSRF Protection
