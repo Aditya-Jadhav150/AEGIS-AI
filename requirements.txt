@@ -84,3 +84,4 @@ diffusers
 accelerate
 python-dotenv
 tf-keras
+piexif
