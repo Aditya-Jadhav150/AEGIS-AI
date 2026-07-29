@@ -111,17 +111,7 @@ When an image is submitted to the production pipeline, the system extracts nine 
 The Flask web service is built with strict security policies to protect the deepfake detection core:
 
 * **Session Management & HF Proxy Fix:** Fully configured to run behind reverse proxies (like Hugging Face Spaces). Session cookies are set to `SameSite=None` and `Secure=True` via `ProxyFix` middleware to prevent session deletion inside cross-origin iframes.
-* **SQLAlchemy Database Schema:** Holds user data (`users.db`) using the following layout:
-  ```python
-  class User(UserMixin, db.Model):
-      id = db.Column(db.Integer, primary_key=True)
-      username = db.Column(db.String(150), unique=True, nullable=False)
-      email = db.Column(db.String(150), unique=True, nullable=True)
-      password_hash = db.Column(db.String(300), nullable=True)
-      google_id = db.Column(db.String(150), unique=True, nullable=True)
-      last_username_change = db.Column(db.DateTime, nullable=True)
-      ai_data_optin = db.Column(db.Boolean, default=False, nullable=True)
-  ```
+* **SQLAlchemy Database Schema:** Securely manages user data (`users.db`) via SQLite for local authentication.
 * **Authentication Gatekeeping:**
   * *Password Complexity Rules:* Minimum 8 characters, at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character.
   * *Rate Limiting Lockout:* tracks failed logins in-memory per IP address. 5 failed login attempts will lock the IP out of the authentication gateway for **5 hours**.
@@ -130,7 +120,7 @@ The Flask web service is built with strict security policies to protect the deep
   * *Username Modification Lockout:* Users can update their usernames at most **once every 7 days** to prevent active operator identification masking.
   * *AI Data Sharing Opt-in:* A toggle allowing operators to control whether their uploaded images can be utilized for retraining forensic modules.
 * **Admin Override Panel:**
-  * Restricted exclusively to `adityajadhav300405@gmail.com`.
+  * Restricted exclusively to the primary authorized admin account.
   * Visualizes the registered user database, authentication methods, and opt-in parameters.
   * Permits account deletion. On deletion, it simulates SMTP dispatch (or executes TLS mailing if credentials exist) sending a notification explaining the deletion reason.
 
