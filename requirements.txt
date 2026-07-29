@@ -83,3 +83,4 @@ pandas
 diffusers
 accelerate
 python-dotenv
+tf-keras
