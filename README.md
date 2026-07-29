@@ -10,20 +10,10 @@ pinned: false
 
 # Veritas-AI (Aegis-AI) - DeepFake Detection System
 
-**Mini Project · Dept. of Information Technology**  
-**MVSR Engineering College, Hyderabad** (VI SEM · Section C · AY 2026 · Batch C9)
-
 This document serves as the absolute, single source of truth for the **Veritas-AI** (internally branded as **Aegis-AI**) forensic platform. It outlines the core system design, the three distinct processing pipelines, biometric feature extraction details, user security frameworks, Hugging Face Spaces Docker SDK configurations, and UI/UX design components.
 
 * **Live Production URL:** [https://aditya150-veritas-ai.hf.space/](https://aditya150-veritas-ai.hf.space/)
 * **Contact:** 245123737184@mvsrec.edu.in
-
-### Team
-* **Surya Pranavam** (2451-23-737-136)
-* **Sai Pranavam** (2451-23-737-142)
-* **Aditya Jadhav** (2451-23-737-184)
-
-**Guide:** Mrs. K. Sri Laxmi (Asst. Professor, Dept. of IT)
 
 ---
 
