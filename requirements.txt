@@ -85,4 +85,4 @@ accelerate
 python-dotenv
 tf-keras
 piexif
-psycopg2-binary
+pg8000
