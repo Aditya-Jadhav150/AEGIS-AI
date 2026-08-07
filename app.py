@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import time
+import uuid
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
@@ -76,6 +77,14 @@ app.config['REMEMBER_COOKIE_SECURE'] = True
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -445,7 +454,10 @@ def api_predict():
         if ext not in ALLOWED_EXTENSIONS:
             return jsonify({"success": False, "message": "Invalid file type. Upload images or videos only."}), 400
 
-        filename = secure_filename(file.filename)
+        if not file.content_type or not (file.content_type.startswith('image/') or file.content_type.startswith('video/')):
+            return jsonify({"success": False, "message": "Invalid MIME type detected. Uploads must be strictly images or videos."}), 400
+
+        filename = f"{uuid.uuid4().hex}.{ext}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
