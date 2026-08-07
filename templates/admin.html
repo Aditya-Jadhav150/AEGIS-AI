@@ -319,9 +319,72 @@
                 font-size: 0.8rem;
             }
         }
+        /* --- Custom Toast Notification --- */
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast-card {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glow);
+            border-left: 4px solid var(--accent);
+            padding: 16px 20px;
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            max-width: 350px;
+            pointer-events: auto;
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .toast-card.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-card i {
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+
+        .toast-card.error {
+            border-left-color: var(--danger);
+        }
+        .toast-card.error i {
+            color: var(--danger);
+        }
+
+        .toast-card.success {
+            border-left-color: #00ffaa;
+        }
+        .toast-card.success i {
+            color: #00ffaa;
+        }
+
+        .toast-card-content {
+            flex-grow: 1;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
 
     <header class="admin-header">
         <div class="brand">
@@ -378,6 +441,37 @@
     </div>
 
     <script>
+        // Custom Toast Notification System
+        function showNotification(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-card ${type}`;
+            
+            let iconClass = type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check';
+            if(type === 'info') iconClass = 'fa-solid fa-circle-info';
+            
+            toast.innerHTML = `
+                <i class="${iconClass}"></i>
+                <div class="toast-card-content">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // Auto dismiss
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if(container.contains(toast)) container.removeChild(toast);
+                }, 400); // Wait for transition
+            }, 4000);
+        }
         const adminUserId = {{ user.id }};
 
         async function fetchUsers() {
@@ -480,7 +574,7 @@
             
             const trimmedReason = reason.trim();
             if (!trimmedReason) {
-                alert("Deletion blocked. A reason is required to notify the operator.");
+                showNotification("Deletion blocked. A reason is required to notify the operator.", 'error');
                 return;
             }
             
@@ -496,13 +590,13 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert(data.message);
+                    showNotification(data.message, 'success');
                     fetchUsers(); // Refresh database view
                 } else {
-                    alert("Deletion Error: " + data.message);
+                    showNotification("Deletion Error: " + data.message, 'error');
                 }
             } catch (error) {
-                alert("Network error. Failed to delete operator.");
+                showNotification("Network error. Failed to delete operator.", 'error');
             }
         }
 

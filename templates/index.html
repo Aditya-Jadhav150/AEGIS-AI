@@ -941,9 +941,72 @@
             visibility: visible;
             opacity: 1;
         }
+        /* --- Custom Toast Notification --- */
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-glow);
+            border-left: 4px solid var(--accent);
+            padding: 16px 20px;
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            max-width: 350px;
+            pointer-events: auto;
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .toast-card.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-card i {
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+
+        .toast-card.error {
+            border-left-color: var(--danger);
+        }
+        .toast-card.error i {
+            color: var(--danger);
+        }
+
+        .toast-card.success {
+            border-left-color: #00ffaa;
+        }
+        .toast-card.success i {
+            color: #00ffaa;
+        }
+
+        .toast-card-content {
+            flex-grow: 1;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
 
     <header>
         <div class="logo-section">
@@ -1188,6 +1251,37 @@
     </div>
 
     <script>
+        // Custom Toast Notification System
+        function showNotification(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-card ${type}`;
+            
+            let iconClass = type === 'error' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check';
+            if(type === 'info') iconClass = 'fa-solid fa-circle-info';
+            
+            toast.innerHTML = `
+                <i class="${iconClass}"></i>
+                <div class="toast-card-content">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // Auto dismiss
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if(container.contains(toast)) container.removeChild(toast);
+                }, 400); // Wait for transition
+            }, 4000);
+        }
         // DOM Elements
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
@@ -1239,7 +1333,7 @@
 
         function handleSelectedFile(file) {
             if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-                alert('Uploaded vector must be an image or video.');
+                showNotification('Uploaded vector must be an image or video.', 'error');
                 return;
             }
             selectedFile = file;
@@ -1343,7 +1437,7 @@
                 try {
                     data = JSON.parse(rawText);
                 } catch (_) {
-                    alert(`Server error (HTTP ${response.status}). Check that the server is running correctly.`);
+                    showNotification(`Server error (HTTP ${response.status}). Check that the server is running correctly.`, 'error');
                     resetAnalyzer();
                     return;
                 }
@@ -1355,11 +1449,11 @@
                         renderForensicReport(data);
                     }, 1200);
                 } else {
-                    alert('Decomposition failure: ' + (data.message || data.error || 'Unknown error'));
+                    showNotification('Decomposition failure: ' + (data.message || data.error || 'Unknown error'), 'error');
                     resetAnalyzer();
                 }
             } catch (error) {
-                alert(error.message || 'Network failure reaching forensic backend node.');
+                showNotification(error.message || 'Network failure reaching forensic backend node.', 'error');
                 resetAnalyzer();
             }
         });
@@ -1497,7 +1591,7 @@
             const optIn = configOptin.checked;
 
             if (newUsername.length < 5) {
-                alert("Username must contain at least 5 characters.");
+                showNotification("Username must contain at least 5 characters.", 'error');
                 configUsername.value = currentSyncedUsername;
                 return;
             }
@@ -1513,7 +1607,7 @@
                     const uData = await uRes.json();
                     
                     if (!uData.success) {
-                        alert("Sync Error: " + uData.message);
+                        showNotification("Sync Error: " + uData.message, 'error');
                         configUsername.value = currentSyncedUsername;
                         return;
                     }
@@ -1532,9 +1626,9 @@
 
                 headerUsername.textContent = currentSyncedUsername;
                 closeSettingsModal();
-                alert("Settings updated successfully.");
+                showNotification("Settings updated successfully.", 'success');
             } catch (error) {
-                alert("Network failure applying settings updates.");
+                showNotification("Network failure applying settings updates.", 'error');
                 configUsername.value = currentSyncedUsername;
             }
         }
