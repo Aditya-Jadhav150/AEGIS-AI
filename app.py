@@ -229,7 +229,7 @@ def predict_image(image_path):
 @app.route('/aegis-override-system')
 @login_required
 def admin():
-    if not getattr(current_user, 'is_admin', False):
+    if not current_user.email or current_user.email.strip().lower() != 'adityajadhav300405@gmail.com':
         return redirect(url_for('index'))
     return render_template('admin.html', user=current_user)
 
@@ -337,7 +337,7 @@ def api_register():
 @app.route('/api/admin/users', methods=['GET'])
 @login_required
 def api_admin_users():
-    if not getattr(current_user, 'is_admin', False):
+    if not current_user.email or current_user.email.strip().lower() != 'adityajadhav300405@gmail.com':
         return jsonify({"success": False, "message": "FORBIDDEN: Admin access only."}), 403
     
     users = User.query.all()
